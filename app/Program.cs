@@ -114,6 +114,11 @@ namespace GHelper
             AppConfig.Set("start_count", startCount);
             Logger.WriteLine("Start Count: " + startCount);
 
+            CpuAntiFreezeManager.Initialize();
+            AppAutoBoostManager.Initialize();
+            MemoryCleaner.SetAutoCleaner(AppConfig.Is("auto_ram_cleaner_enabled"));
+            MicNoiseManager.ApplyMicConfig();
+
             acpi = new AsusACPI();
 
             if (!acpi.IsConnected() && AppConfig.IsASUS() && !AppConfig.IsDesktop())

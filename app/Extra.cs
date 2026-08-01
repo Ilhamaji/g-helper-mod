@@ -1,4 +1,4 @@
-﻿using GHelper.Display;
+using GHelper.Display;
 using GHelper.Gpu.AMD;
 using GHelper.Helpers;
 using GHelper.Input;
@@ -504,7 +504,94 @@ namespace GHelper
             InitVramMem();
 
             InitACPITesting();
+            InitCpuBoostProFeatures();
 
+        }
+
+        private void InitCpuBoostProFeatures()
+        {
+            Panel panelCustomFeatures = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 160,
+                Padding = new Padding(10)
+            };
+
+            Label labelHeader = new Label
+            {
+                Text = "CPU Boost Pro & Audio Enhancements",
+                Font = new Font(Font, FontStyle.Bold),
+                Top = 5,
+                Left = 10,
+                AutoSize = true
+            };
+
+            RButton buttonAppBoost = new RButton
+            {
+                Text = "Target App Auto Boost...",
+                Left = 10,
+                Top = 30,
+                Width = 180,
+                Height = 30
+            };
+            buttonAppBoost.Click += (s, e) => { using var f = new AppAutoBoostForm(); f.ShowDialog(this); };
+
+            RCheckBox checkAntiFreeze = new RCheckBox
+            {
+                Text = "CPU Boost Anti-Freeze Protection",
+                Left = 205,
+                Top = 35,
+                AutoSize = true,
+                Checked = CpuAntiFreezeManager.IsEnabled
+            };
+            checkAntiFreeze.CheckedChanged += (s, e) => { CpuAntiFreezeManager.IsEnabled = checkAntiFreeze.Checked; };
+
+            RButton buttonCleanRam = new RButton
+            {
+                Text = "Clean Standby RAM",
+                Left = 10,
+                Top = 70,
+                Width = 180,
+                Height = 30
+            };
+            buttonCleanRam.Click += (s, e) =>
+            {
+                long freed = MemoryCleaner.CleanMemory();
+                MessageBox.Show(this, $"Memory cleaned successfully!\nFreed: {freed / (1024 * 1024)} MB", "Standby RAM Cleaner", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            };
+
+            RCheckBox checkAutoRam = new RCheckBox
+            {
+                Text = "Auto Standby Memory Cleaner",
+                Left = 205,
+                Top = 75,
+                AutoSize = true,
+                Checked = AppConfig.Is("auto_ram_cleaner_enabled")
+            };
+            checkAutoRam.CheckedChanged += (s, e) =>
+            {
+                AppConfig.Set("auto_ram_cleaner_enabled", checkAutoRam.Checked ? 1 : 0);
+                MemoryCleaner.SetAutoCleaner(checkAutoRam.Checked);
+            };
+
+            RButton buttonMicEq = new RButton
+            {
+                Text = "Mic Noise EQ Settings...",
+                Left = 10,
+                Top = 110,
+                Width = 180,
+                Height = 30
+            };
+            buttonMicEq.Click += (s, e) => { using var f = new MicNoiseForm(); f.ShowDialog(this); };
+
+            panelCustomFeatures.Controls.Add(labelHeader);
+            panelCustomFeatures.Controls.Add(buttonAppBoost);
+            panelCustomFeatures.Controls.Add(checkAntiFreeze);
+            panelCustomFeatures.Controls.Add(buttonCleanRam);
+            panelCustomFeatures.Controls.Add(checkAutoRam);
+            panelCustomFeatures.Controls.Add(buttonMicEq);
+
+            Controls.Add(panelCustomFeatures);
         }
 
         private void CheckKeystoneSoundCheckedChanged(object? sender, EventArgs e)

@@ -128,6 +128,7 @@ namespace GHelper.Mode
             settings.ShowMode(mode);
 
             Modes.SetCurrent(mode);
+            AppAutoBoostManager.ResetDefaultBoost();
 
 
             _modeCts.Cancel();
