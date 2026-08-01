@@ -37,7 +37,7 @@ namespace GHelper.Helpers
         private static readonly Guid GUID_PCIEXPRESS_SUBGROUP = new Guid("503b4e44-eb92-42c7-9e7c-41149f485132");
         private static readonly Guid GUID_PCIEXPRESS_LINKSETTINGS = new Guid("ee12f90a-a8b9-470a-817c-ae015a4d22a3");
 
-        private static Timer? _pulseTimer;
+        private static System.Threading.Timer? _pulseTimer;
         private static bool _isAntiFreezeActive = false;
         private static uint _originalMinState = 5;
         private static uint _originalPcieState = 0;
@@ -183,7 +183,7 @@ namespace GHelper.Helpers
         private static void StartKeepAlivePulse()
         {
             _pulseTimer?.Dispose();
-            _pulseTimer = new Timer(OnKeepAlivePulseCallback, null, 0, 500);
+            _pulseTimer = new System.Threading.Timer(OnKeepAlivePulseCallback, null, 0, 500);
         }
 
         private static void StopKeepAlivePulse()
