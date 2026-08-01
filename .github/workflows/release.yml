@@ -38,6 +38,7 @@ jobs:
         path: app/bin/x64/Release/net10.0-windows/win-x64/publish/GHelper.exe
 
     - id: sign-exe
+      if: secrets.SIGNPATH_ORG_ID != ''
       uses: signpath/github-action-submit-signing-request@v2
       with:
         api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
@@ -47,6 +48,12 @@ jobs:
         github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
         wait-for-completion: true
         output-artifact-directory: './signed'
+
+    - name: Prepare EXE for unsigned builds
+      if: secrets.SIGNPATH_ORG_ID == ''
+      run: |
+        mkdir -p ./signed
+        cp app/bin/x64/Release/net10.0-windows/win-x64/publish/GHelper.exe ./signed/GHelper.exe
 
     - name: Create ZIP from signed EXE
       run: powershell Compress-Archive ./signed/GHelper.exe ./signed/GHelper.zip
