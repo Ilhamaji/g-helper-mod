@@ -366,7 +366,7 @@ namespace GHelper.Overlay
         private static double D(object? v) { try { return v is null ? 0.0 : Convert.ToDouble(v); } catch { return 0.0; } }
 
         private static string FmtTemp(double t) =>
-        t > 0 ? ((int)Math.Round(t) + "°").PadLeft(4) : " -- ";
+        t > 0 ? ((int)Math.Round(t) + "°").PadLeft(4) : "";
 
         private static string FmtPow(double p) =>
         p > 0 ? Math.Round(p, 1).ToString("F1") + "W" : "";
@@ -515,7 +515,7 @@ namespace GHelper.Overlay
                 {
                     double level = HardwareControl.GetBatteryChargePercentage();
                     _batPercent = (int)Math.Round(level);
-                    _batLevel = level > 0 ? _batPercent + "%" : "--";
+                    _batLevel = level > 0 ? _batPercent + "%" : "";
                     decimal rate = HardwareControl.batteryRate ?? 0;
                     _batRate = rate == 0 ? "" : (rate > 0 ? "+" : "-") + Math.Abs(rate).ToString("F1");
                     _batCharging = rate > 0;
@@ -648,7 +648,7 @@ namespace GHelper.Overlay
             g.TextRenderingHint = _scalePercent <= 75 ? TextRenderingHint.ClearTypeGridFit : TextRenderingHint.AntiAliasGridFit;
 
             g.FillRoundedRectangle(_dragModeActive && _bgAlpha < DragMinAlpha ? _dragBgBrush : _bgBrush, Bound, radius);
-            using (var borderPen = new Pen(Color.FromArgb(90, 168, 141, 247), 1.2f * sc))
+            using (var borderPen = new Pen(Color.FromArgb(90, 80, 80, 95), 1.0f * sc))
             {
                 g.DrawRoundedRectangle(borderPen, Bound, radius);
             }
@@ -675,9 +675,9 @@ namespace GHelper.Overlay
             int textY = topY + (int)Math.Round(sc);
 
             // FPS
-            if (showFps)
+            if (showFps && _currentFps > 0)
             {
-                string fpsStr = _currentFps > 0 ? _currentFps.ToString() : "--";
+                string fpsStr = _currentFps.ToString();
                 float fpsW = g.MeasureString(fpsStr, fpsBold).Width;
                 g.DrawString(fpsStr, fpsBold, _gpuBrush,
                 new PointF(padX + (fpsColW - fpsW) / 2f, topY));
@@ -893,8 +893,9 @@ namespace GHelper.Overlay
         private void PositionAtBottomRight()
         {
             Screen screen = TargetScreen();
-            const int margin = 20;
-            Location = new Point(screen.Bounds.Right - Width - margin, screen.Bounds.Bottom - Height - margin);
+            const int marginX = 20;
+            const int marginY = 24;
+            Location = new Point(screen.WorkingArea.Right - Width - marginX, screen.WorkingArea.Bottom - Height - marginY);
         }
 
         private static Screen TargetScreen()
@@ -992,7 +993,7 @@ namespace GHelper.Overlay
             _cpuLinePen.Dispose();   _cpuLinePen = new Pen(cpu, 1.5f);
             _gpuFillBrush.Dispose(); _gpuFillBrush = new SolidBrush(Color.FromArgb(128, gpu.R / 3, gpu.G / 3, gpu.B / 3));
             _cpuFillBrush.Dispose(); _cpuFillBrush = new SolidBrush(Color.FromArgb(128, cpu.R / 3, cpu.G / 3, cpu.B / 3));
-            _bgBrush.Dispose();      _bgBrush = new SolidBrush(Color.FromArgb(_bgAlpha, 18, 20, 26));
+            _bgBrush.Dispose();      _bgBrush = new SolidBrush(Color.FromArgb(_bgAlpha, 32, 32, 36));
         }
 
         // Complete is the customizable preset; graph chart is disabled for compact modern UI.
@@ -1041,15 +1042,15 @@ namespace GHelper.Overlay
             int anchor = AppConfig.Get("overlay_anchor", -1);
             if (anchor < 0) { PositionAtBottomRight(); return; }
             int offsetX = AppConfig.Get("overlay_offset_x", 20);
-            int offsetY = AppConfig.Get("overlay_offset_y", 20);
+            int offsetY = AppConfig.Get("overlay_offset_y", 24);
             Screen screen = TargetScreen();
             bool isRight  = (anchor & 1) != 0;
             bool isBottom = (anchor & 2) != 0;
-            int x = isRight  ? screen.Bounds.Right  - Width  - offsetX : screen.Bounds.X + offsetX;
-            int y = isBottom ? screen.Bounds.Bottom - Height - offsetY : screen.Bounds.Y + offsetY;
+            int x = isRight  ? screen.WorkingArea.Right  - Width  - offsetX : screen.WorkingArea.X + offsetX;
+            int y = isBottom ? screen.WorkingArea.Bottom - Height - offsetY : screen.WorkingArea.Y + offsetY;
             const int margin = 5;
-            x = Math.Max(screen.Bounds.Left + margin, Math.Min(x, screen.Bounds.Right  - Width  - margin));
-            y = Math.Max(screen.Bounds.Top  + margin, Math.Min(y, screen.Bounds.Bottom - Height - margin));
+            x = Math.Max(screen.WorkingArea.Left + margin, Math.Min(x, screen.WorkingArea.Right  - Width  - margin));
+            y = Math.Max(screen.WorkingArea.Top  + margin, Math.Min(y, screen.WorkingArea.Bottom - Height - margin));
             Location = new Point(x, y);
         }
 
