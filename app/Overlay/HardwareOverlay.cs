@@ -60,9 +60,8 @@ namespace GHelper.Overlay
         private const int ScaleStepPercent = 10;
         private int _scalePercent = 100;
 
-        // Fixed base scale, deliberately independent of Windows DPI. 2.0 reproduces
-        // the size the overlay had at 200% display scaling — the desired default.
-        private const float BaseScale = 2.0f;
+        // Fixed base scale. 1.0f produces a compact, modern HUD overlay.
+        private const float BaseScale = 1.0f;
 
         private bool _dragging;
         private Point _dragCursorStart;
@@ -75,55 +74,40 @@ namespace GHelper.Overlay
         private OverlayMode _mode;
 
         // ── Layout constants (base = 96 dpi) ─────────────────────────────────
-        //
-        // Light:    fps | temp                        | power
-        // Default:  fps | temp + fan RPM              | chart | power | bat% + rate
-        // Full:     fps | temp + fan RPM              | chart | power | usage% | bar | bat% + rate
-        // Complete: fps | name | temp + fan RPM       | chart | power | usage% | bar | mem GB | bar | bat% + rate
-        //
-        // The battery column only appears while the device runs on battery (always on Ally).
-        //
-        // Click on the overlay cycles Light → Default → Full → Complete → Light.
-        //
-        // Bar height is fixed per DPI (~BaseUsageBarHeight * sc) and cell pitch is
-        // integer, so the number of cells varies with available pixels while every
-        // cell stays a clean integer height.
-        //
-        private const float BaseFontSize = 13f;
-        private const float BaseRpmFontSize = 8.5f;
-        private const int BaseLineHeight = 18;
+        private const float BaseFontSize = 11.5f;
+        private const float BaseRpmFontSize = 8f;
+        private const int BaseLineHeight = 15;
         private const int BaseLineSpacing = 1;
-        private const int BasePadX = 8;
-        private const int BasePadY = 4;
-        private const int BaseFpsColWidth = 52;
-        private const int BaseLeftColWidth = 128;
-        private const int BaseChartColWidth = 120;
+        private const int BasePadX = 6;
+        private const int BasePadY = 3;
+        private const int BaseFpsColWidth = 38;
+        private const int BaseLeftColWidth = 104;
+        private const int BaseChartColWidth = 0;
         private const int BasePowerGap = 4;
-        private const int BasePowerColWidth = 46; // fits "120.9W" (6 chars, F1 + "W") right-aligned, no extra slack
-        private const int BaseColGap = 8;
-        private const int CornerRadius = 3;
+        private const int BasePowerColWidth = 40;
+        private const int BaseColGap = 6;
+        private const int CornerRadius = 4;
         private const int MarginFromEdge = 10;
-        private const int BaseLightLeftColWidth = 64; // fits "GPU: 82° " (9 Consolas chars); trailing space is the gap to the power column
-        private const int BaseUsageBarGap = 11;       // gap between the power W and the usage % column (full mode)
-        private const int BaseUsageBarWidth = 5;
-        private const int BaseUsageNumGap = 4;        // gap between the usage % text and its bar
-        private const int BaseUsageNumColWidth = 30;  // right-aligned column fitting "100%"
-        private const int BaseFullPadRight = 4;       // tighter right margin in full mode (vs BasePadX)
-        // Target bar height at base DPI; tuned so at 2x DPI numCells = 10.
-        private const int BaseUsageBarHeight = 15;
-        private const int BaseUsageBarYNudge = 1; // raise bars to align with the text baseline
-        private const int BaseNameColWidth = 90;     // fits "Core Ultra 9" / "Ryzen AI 9"
-        private const int BaseMemBarGap = 8;
-        private const int BaseMemNumColWidth = 54;   // fits "127.9GB"
-        private const int BaseBatColGap = 8;
-        private const int BaseBatColWidth = 38;      // fits "-22.4"
+        private const int BaseLightLeftColWidth = 56;
+        private const int BaseUsageBarGap = 8;
+        private const int BaseUsageBarWidth = 4;
+        private const int BaseUsageNumGap = 3;
+        private const int BaseUsageNumColWidth = 26;
+        private const int BaseFullPadRight = 4;
+        private const int BaseUsageBarHeight = 12;
+        private const int BaseUsageBarYNudge = 1;
+        private const int BaseNameColWidth = 75;
+        private const int BaseMemBarGap = 6;
+        private const int BaseMemNumColWidth = 44;
+        private const int BaseBatColGap = 6;
+        private const int BaseBatColWidth = 32;
         private const int BaseBatIconGap = 2;
-        private const int BaseBatIconWidth = 8;
-        private const int BaseBatIconHeight = 15;
-        private const int BaseBatNubWidth = 4;
+        private const int BaseBatIconWidth = 7;
+        private const int BaseBatIconHeight = 13;
+        private const int BaseBatNubWidth = 3;
         private const int BaseBatNubHeight = 2;
         private const int BaseLightWidth = BasePadX + BaseFpsColWidth + BaseColGap + BaseLightLeftColWidth + BasePowerGap + BasePowerColWidth + BasePadX;
-        private const int BaseWidth = BasePadX + BaseFpsColWidth + BaseColGap + BaseLeftColWidth + BaseColGap + BaseChartColWidth + BasePowerGap + BasePowerColWidth + BasePadX;
+        private const int BaseWidth = BasePadX + BaseFpsColWidth + BaseColGap + BaseLeftColWidth + BasePowerGap + BasePowerColWidth + BasePadX;
         private const int BaseFullWidth = BaseWidth - BasePadX + BaseUsageBarGap + BaseUsageBarWidth + BaseUsageNumGap + BaseUsageNumColWidth + BaseFullPadRight;
         private const int BaseCompleteWidth = BaseFullWidth + BaseMemBarGap + BaseMemNumColWidth + BaseUsageNumGap + BaseUsageBarWidth;
 
@@ -475,8 +459,8 @@ namespace GHelper.Overlay
             };
 
             // Trailing space is the separator between temp and fan number
-            _gpuTempStr = "GPU:" + FmtTemp(gpuTemp) + " ";
-            _cpuTempStr = "CPU:" + FmtTemp(cpuTemp) + " [" + boostTag + "] ";
+            _gpuTempStr = gpuTemp > 0 ? "GPU:" + FmtTemp(gpuTemp) + " " : "";
+            _cpuTempStr = cpuTemp > 0 ? "CPU:" + FmtTemp(cpuTemp) + " [" + boostTag + "] " : "CPU:[" + boostTag + "] ";
             _gpuFanNum = FormatFan(HardwareControl.gpuFanRPM);
             _cpuFanNum = FormatFan(HardwareControl.cpuFanRPM);
             _gpuPow = HardwareControl.gpuPower is null ? "" : Math.Round(HardwareControl.gpuPower.Value, 1).ToString("F1") + "W";
@@ -599,7 +583,7 @@ namespace GHelper.Overlay
             int batColW = S(sc, BaseBatColWidth);
 
             int cursor = padX;
-            if (showFps) cursor += fpsColW + colGap;
+            if (showFps && _currentFps > 0) cursor += fpsColW + colGap;
 
             int nameX = cursor;
             if (showNames) cursor += nameColW + colGap;
@@ -835,7 +819,7 @@ namespace GHelper.Overlay
 
             if (fanNum.Length == 0) return;
 
-            float numX = x + charW * tempStr.Length;
+            float numX = x + (tempStr.Length > 0 ? g.MeasureString(tempStr, font).Width : 0);
             g.DrawString(fanNum, font, brush, new PointF(numX, y));
 
             // 2px gap between digits and "RPM" label
