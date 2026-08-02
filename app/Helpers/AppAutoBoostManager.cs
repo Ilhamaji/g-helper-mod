@@ -80,7 +80,7 @@ namespace GHelper.Helpers
 
         public static bool IsAltTabProtectionEnabled
         {
-            get => AppConfig.Is("app_auto_boost_alt_tab_protection", 1);
+            get => AppConfig.IsNotFalse("app_auto_boost_alt_tab_protection");
             set => AppConfig.Set("app_auto_boost_alt_tab_protection", value ? 1 : 0);
         }
 
