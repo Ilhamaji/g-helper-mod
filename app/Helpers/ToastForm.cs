@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Drawing.Drawing2D;
 
 namespace GHelper.Helpers
@@ -36,6 +36,14 @@ namespace GHelper.Helpers
             using (GraphicsPath path = RoundedRect(bounds, cornerRadius))
             {
                 graphics.FillPath(brush, path);
+            }
+        }
+
+        public static void DrawRoundedRectangle(this Graphics graphics, Pen pen, Rectangle bounds, int cornerRadius)
+        {
+            using (GraphicsPath path = RoundedRect(bounds, cornerRadius))
+            {
+                graphics.DrawPath(pen, path);
             }
         }
     }
