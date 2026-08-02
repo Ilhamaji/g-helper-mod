@@ -217,12 +217,12 @@ namespace GHelper.Helpers
             }
             else
             {
-                if (_defaultBoostMode != -1 && _lastAppliedBoostMode != _defaultBoostMode)
+                if (_defaultBoostMode != -1)
                 {
                     PowerNative.SetCPUBoost(_defaultBoostMode);
-                    _lastAppliedBoostMode = _defaultBoostMode;
+                    Logger.WriteLine($"AppAutoBoost unfocused target app: Restored CPU Boost to mode {_defaultBoostMode}");
+                    _lastAppliedBoostMode = -1;
                     _defaultBoostMode = -1;
-                    Logger.WriteLine($"AppAutoBoost unfocused target app: Restored CPU Boost to mode {_lastAppliedBoostMode}");
                 }
             }
         }

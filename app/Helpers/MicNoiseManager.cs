@@ -47,15 +47,8 @@ namespace GHelper.Helpers
                 string content = File.ReadAllText(MainConfigFile);
                 if (content.IndexOf("cpu_boost_mic.txt", StringComparison.OrdinalIgnoreCase) < 0)
                 {
-                    StringBuilder sb = new StringBuilder(content);
-                    if (sb.Length > 0 && sb[sb.Length - 1] != '\n')
-                    {
-                        sb.AppendLine();
-                    }
-                    sb.AppendLine();
-                    sb.AppendLine("# G-Helper - Mic Noise Suppression Integration");
-                    sb.AppendLine("Include: cpu_boost_mic.txt");
-                    File.WriteAllText(MainConfigFile, sb.ToString());
+                    string newContent = "# G-Helper - Mic Noise Suppression Integration\r\nInclude: cpu_boost_mic.txt\r\n\r\n" + content;
+                    File.WriteAllText(MainConfigFile, newContent);
                 }
                 _includeDirectiveEnsured = true;
             }

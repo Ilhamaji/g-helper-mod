@@ -260,6 +260,15 @@ namespace GHelper.UI
 
         private void ApplyAndShowStatus()
         {
+            if (!MicNoiseManager.IsApoInstalled())
+            {
+                _labelStatus.Text = "Status: Equalizer APO not detected. Please install Equalizer APO.";
+                if (MessageBox.Show(this, "Equalizer APO is required for Mic Noise EQ & RNNoise AI suppression.\nDo you want to download Equalizer APO now?", "Equalizer APO Missing", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                {
+                    try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://sourceforge.net/projects/equalizerapo/") { UseShellExecute = true }); } catch { }
+                }
+                return;
+            }
             string status = MicNoiseManager.ApplyMicConfig();
             _labelStatus.Text = "Status: " + status;
         }

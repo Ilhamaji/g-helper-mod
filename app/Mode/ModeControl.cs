@@ -129,6 +129,7 @@ namespace GHelper.Mode
 
             Modes.SetCurrent(mode);
             AppAutoBoostManager.ResetDefaultBoost();
+            CpuAntiFreezeManager.ApplyState();
 
 
             _modeCts.Cancel();

@@ -88,6 +88,8 @@ namespace GHelper.Helpers
                 }
 
                 uint floor = MinimumStateFloor;
+                _lastAppliedMinState = 999;
+                _lastAppliedPcieState = 999;
                 SetMinimumProcessorState(floor);
                 SetPcieLinkStatePowerManagement(0); // 0 = Off (Max Performance, avoids PCIe link sleep freeze)
                 StartKeepAlivePulse();
