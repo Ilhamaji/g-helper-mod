@@ -648,6 +648,10 @@ namespace GHelper.Overlay
             g.TextRenderingHint = _scalePercent <= 75 ? TextRenderingHint.ClearTypeGridFit : TextRenderingHint.AntiAliasGridFit;
 
             g.FillRoundedRectangle(_dragModeActive && _bgAlpha < DragMinAlpha ? _dragBgBrush : _bgBrush, Bound, radius);
+            using (var borderPen = new Pen(Color.FromArgb(90, 168, 141, 247), 1.2f * sc))
+            {
+                g.DrawRoundedRectangle(borderPen, Bound, radius);
+            }
 
             if (sc != _lastScale)
             {
@@ -886,10 +890,11 @@ namespace GHelper.Overlay
             g.FillPolygon(brush, _polyPts);
         }
 
-        private void PositionAtTopLeft()
+        private void PositionAtBottomRight()
         {
-            Screen screen = Screen.PrimaryScreen ?? Screen.AllScreens[0];
-            Location = new Point(screen.Bounds.X + MarginFromEdge, screen.Bounds.Y + MarginFromEdge);
+            Screen screen = TargetScreen();
+            const int margin = 20;
+            Location = new Point(screen.Bounds.Right - Width - margin, screen.Bounds.Bottom - Height - margin);
         }
 
         private static Screen TargetScreen()
@@ -979,28 +984,27 @@ namespace GHelper.Overlay
         {
             Color gpu = ParseColor("overlay_color_gpu", DefaultGpuColor);
             Color cpu = ParseColor("overlay_color_cpu", DefaultCpuColor);
-            _bgAlpha = Math.Clamp(AppConfig.Get("overlay_alpha", 128), 0, 255);
+            _bgAlpha = Math.Clamp(AppConfig.Get("overlay_alpha", 220), 0, 255);
 
             _gpuBrush.Dispose();     _gpuBrush = new SolidBrush(gpu);
             _cpuBrush.Dispose();     _cpuBrush = new SolidBrush(cpu);
             _gpuLinePen.Dispose();   _gpuLinePen = new Pen(gpu, 1.5f);
             _cpuLinePen.Dispose();   _cpuLinePen = new Pen(cpu, 1.5f);
-            // Chart fill = base color at 1/3 brightness, alpha 128
             _gpuFillBrush.Dispose(); _gpuFillBrush = new SolidBrush(Color.FromArgb(128, gpu.R / 3, gpu.G / 3, gpu.B / 3));
             _cpuFillBrush.Dispose(); _cpuFillBrush = new SolidBrush(Color.FromArgb(128, cpu.R / 3, cpu.G / 3, cpu.B / 3));
-            _bgBrush.Dispose();      _bgBrush = new SolidBrush(Color.FromArgb(_bgAlpha, 0, 0, 0));
+            _bgBrush.Dispose();      _bgBrush = new SolidBrush(Color.FromArgb(_bgAlpha, 18, 20, 26));
         }
 
-        // Complete is the customizable preset (blocks from overlay_show_*, default on); others are fixed.
+        // Complete is the customizable preset; graph chart is disabled for compact modern UI.
         private void ApplyPreset(OverlayMode mode)
         {
             bool complete = mode == OverlayMode.Complete;
-            bool extra = mode != OverlayMode.Light; // fans + chart on for Default/Full/Complete
+            bool extra = mode != OverlayMode.Light;
 
             _showFps   = complete ? AppConfig.IsNotFalse("overlay_show_fps")   : true;
             _showTemp  = complete ? AppConfig.IsNotFalse("overlay_show_temp")  : true;
             _showFans  = complete ? AppConfig.IsNotFalse("overlay_show_fans")  : extra;
-            _showChart = complete ? AppConfig.IsNotFalse("overlay_show_chart") : extra;
+            _showChart = false; // Graph chart removed for compact modern UI
             _showPower = complete ? AppConfig.IsNotFalse("overlay_show_power") : true;
             _showUsage = complete ? AppConfig.IsNotFalse("overlay_show_usage") : mode == OverlayMode.Full;
             _showRam   = complete ? AppConfig.IsNotFalse("overlay_show_ram")   : false;
@@ -1009,19 +1013,15 @@ namespace GHelper.Overlay
             _showNames = complete && AppConfig.Is("overlay_names");
         }
 
-        // Don't pull sensors for blocks that aren't drawn (power feeds both the power and chart blocks).
         private void ApplySensorFlags()
         {
             HardwareControl.readFans   = _showFans;
             HardwareControl.readUsage  = _showUsage;
             HardwareControl.readMemory = _showRam;
-            HardwareControl.readPower  = _showPower || _showChart;
+            HardwareControl.readPower  = _showPower;
             HardwareControl.readBattery = _showBattery && _onBattery;
         }
 
-        // Started for the FPS block, or for Auto Show to detect a game even with FPS hidden. Only
-        // torn down in StopOverlay — disposing here would race the timer thread's SampleFps (the
-        // reference write is atomic, so that thread cleanly sees null-or-monitor).
         private void EnsureFpsMonitor()
         {
             if (_fps != null || !(_showFps || _gameOnly)) return;
@@ -1030,9 +1030,6 @@ namespace GHelper.Overlay
             _fpsTask = Task.Run(() => _fps.Start());
         }
 
-        // Re-anchor the overlay after the user changes resolution or swaps the primary
-        // display — without this the absolute Location can end up off-screen or far
-        // from the corner the user originally pinned it to.
         private void OnDisplaySettingsChanged(object? sender, EventArgs e)
         {
             if (!_active) return;
@@ -1042,9 +1039,9 @@ namespace GHelper.Overlay
         private void RestorePosition()
         {
             int anchor = AppConfig.Get("overlay_anchor", -1);
-            if (anchor < 0) { PositionAtTopLeft(); return; }
-            int offsetX = AppConfig.Get("overlay_offset_x", MarginFromEdge);
-            int offsetY = AppConfig.Get("overlay_offset_y", MarginFromEdge);
+            if (anchor < 0) { PositionAtBottomRight(); return; }
+            int offsetX = AppConfig.Get("overlay_offset_x", 20);
+            int offsetY = AppConfig.Get("overlay_offset_y", 20);
             Screen screen = TargetScreen();
             bool isRight  = (anchor & 1) != 0;
             bool isBottom = (anchor & 2) != 0;
