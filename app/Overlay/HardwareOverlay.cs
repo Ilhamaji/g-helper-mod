@@ -111,24 +111,26 @@ namespace GHelper.Overlay
         private const int BaseFullWidth = BaseWidth - BasePadX + BaseUsageBarGap + BaseUsageBarWidth + BaseUsageNumGap + BaseUsageNumColWidth + BaseFullPadRight;
         private const int BaseCompleteWidth = BaseFullWidth + BaseMemBarGap + BaseMemNumColWidth + BaseUsageNumGap + BaseUsageBarWidth;
 
-        private static readonly Color DefaultGpuColor = Color.FromArgb(255, 0, 255, 80);
-        private static readonly Color DefaultCpuColor = Color.FromArgb(255, 60, 220, 255);
-        private static readonly SolidBrush _batBrush = new(Color.FromArgb(255, 235, 235, 235));
-        private static readonly SolidBrush _batDimBrush = new(Color.FromArgb(128, 78, 78, 78));
+        private static readonly Color OffWhiteTextColor = Color.FromArgb(255, 235, 238, 245); // Off-white / Light Gray
+        private static readonly Color LightGrayTextColor = Color.FromArgb(255, 210, 215, 225); // Subtle Light Gray
+        private static readonly Color DefaultGpuColor = LightGrayTextColor;
+        private static readonly Color DefaultCpuColor = OffWhiteTextColor;
+        private static readonly SolidBrush _batBrush = new(OffWhiteTextColor);
+        private static readonly SolidBrush _batDimBrush = new(Color.FromArgb(128, 140, 145, 155));
 
         // Minimum background alpha while dragging, so a near-transparent box stays grabbable
         // (a layered window ignores mouse hits on fully transparent pixels).
         private const int DragMinAlpha = 110;
-        private static readonly SolidBrush _dragBgBrush = new(Color.FromArgb(DragMinAlpha, 0, 0, 0));
-        private int _bgAlpha = 128;
+        private static readonly SolidBrush _dragBgBrush = new(Color.FromArgb(DragMinAlpha, 15, 17, 23));
+        private int _bgAlpha = 180;
 
-        private SolidBrush _bgBrush = new(Color.FromArgb(128, 0, 0, 0));
+        private SolidBrush _bgBrush = new(Color.FromArgb(190, 15, 17, 23));
         private SolidBrush _gpuBrush = new(DefaultGpuColor);
         private SolidBrush _cpuBrush = new(DefaultCpuColor);
         private Pen _gpuLinePen = new(DefaultGpuColor, 1.5f);
         private Pen _cpuLinePen = new(DefaultCpuColor, 1.5f);
-        private SolidBrush _gpuFillBrush = new(Color.FromArgb(128, 0, 85, 27));
-        private SolidBrush _cpuFillBrush = new(Color.FromArgb(128, 20, 73, 85));
+        private SolidBrush _gpuFillBrush = new(Color.FromArgb(100, 140, 145, 155));
+        private SolidBrush _cpuFillBrush = new(Color.FromArgb(100, 180, 185, 195));
 
         // Cached drawing resources — recreated only when the scale changes
         private float _lastScale = 0f;
@@ -633,7 +635,7 @@ namespace GHelper.Overlay
 
             // Background & Border
             g.FillRoundedRectangle(_dragModeActive && _bgAlpha < DragMinAlpha ? _dragBgBrush : _bgBrush, Bound, radius);
-            using (var borderPen = new Pen(Color.FromArgb(90, 80, 80, 95), 1.0f * sc))
+            using (var borderPen = new Pen(Color.FromArgb(80, 200, 210, 225), 1.0f * sc))
             {
                 g.DrawRoundedRectangle(borderPen, Bound, radius);
             }

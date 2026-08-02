@@ -66,6 +66,7 @@ namespace GHelper.Helpers
         private static int _lastMatchedBoostMode = -1;
         private static string _lastMatchedApp = string.Empty;
         private static int _lastMatchedPid = 0;
+        private static System.Threading.Timer? _processMonitorTimer;
 
         public static bool IsEnabled
         {
@@ -151,6 +152,7 @@ namespace GHelper.Helpers
 
         public static void ResetDefaultBoost()
         {
+            StopProcessMonitoring();
             _defaultBoostMode = -1;
             _lastAppliedBoostMode = -1;
             _lastMatchedApp = string.Empty;
@@ -161,6 +163,8 @@ namespace GHelper.Helpers
         public static void StopService()
         {
             if (!_isServiceRunning) return;
+
+            StopProcessMonitoring();
 
             if (_hookHandle != IntPtr.Zero)
             {
@@ -296,6 +300,7 @@ namespace GHelper.Helpers
                 _lastMatchedApp = matchedRule.ProcessName;
                 _lastMatchedBoostMode = matchedRule.BoostMode;
                 _lastMatchedPid = (int)pid;
+                StartProcessMonitoring();
             }
             else
             {
@@ -308,7 +313,11 @@ namespace GHelper.Helpers
                             PowerNative.SetCPUBoost(bgMode);
                             _lastAppliedBoostMode = bgMode;
                         }
+                        _lastMatchedApp = bgApp;
+                        _lastMatchedBoostMode = bgMode;
+                        _lastMatchedPid = bgPid;
                         Logger.WriteLine($"AppAutoBoost Alt+Tab protection active: Keeping CPU Boost at mode {bgMode} for background app '{bgApp}' (PID {bgPid})");
+                        StartProcessMonitoring();
                     }
                     else
                     {
@@ -319,8 +328,50 @@ namespace GHelper.Helpers
                         _lastMatchedApp = string.Empty;
                         _lastMatchedBoostMode = -1;
                         _lastMatchedPid = 0;
+                        StopProcessMonitoring();
                     }
                 }
+            }
+        }
+
+        private static void StartProcessMonitoring()
+        {
+            lock (_ruleLock)
+            {
+                if (_processMonitorTimer == null)
+                {
+                    _processMonitorTimer = new System.Threading.Timer(OnProcessMonitorTick, null, 1000, 1000);
+                }
+            }
+        }
+
+        private static void StopProcessMonitoring()
+        {
+            lock (_ruleLock)
+            {
+                _processMonitorTimer?.Dispose();
+                _processMonitorTimer = null;
+            }
+        }
+
+        private static void OnProcessMonitorTick(object? state)
+        {
+            if (!_isServiceRunning) return;
+            int pidToMonitor = _lastMatchedPid;
+            if (pidToMonitor > 0)
+            {
+                if (!IsProcessStillRunning(pidToMonitor))
+                {
+                    Logger.WriteLine($"AppAutoBoost detected background process (PID {pidToMonitor}) has exited. Resetting CPU boost.");
+                    _lastMatchedPid = 0;
+                    _currentActiveApp = string.Empty;
+                    StopProcessMonitoring();
+                    Task.Run(() => CheckActiveForegroundApp());
+                }
+            }
+            else
+            {
+                StopProcessMonitoring();
             }
         }
 
