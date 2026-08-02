@@ -63,6 +63,10 @@ namespace GHelper.Helpers
         private static List<TargetAppRule> _rules = new();
         private static readonly object _ruleLock = new();
 
+        private static int _lastMatchedBoostMode = -1;
+        private static string _lastMatchedApp = string.Empty;
+        private static int _lastMatchedPid = 0;
+
         public static bool IsEnabled
         {
             get => AppConfig.Is("app_auto_boost_enabled");
@@ -72,6 +76,12 @@ namespace GHelper.Helpers
                 if (value) StartService();
                 else StopService();
             }
+        }
+
+        public static bool IsAltTabProtectionEnabled
+        {
+            get => AppConfig.Is("app_auto_boost_alt_tab_protection", 1);
+            set => AppConfig.Set("app_auto_boost_alt_tab_protection", value ? 1 : 0);
         }
 
         public static List<TargetAppRule> GetRules()
@@ -143,6 +153,9 @@ namespace GHelper.Helpers
         {
             _defaultBoostMode = -1;
             _lastAppliedBoostMode = -1;
+            _lastMatchedApp = string.Empty;
+            _lastMatchedBoostMode = -1;
+            _lastMatchedPid = 0;
         }
 
         public static void StopService()
@@ -163,6 +176,9 @@ namespace GHelper.Helpers
                 _defaultBoostMode = -1;
             }
             _lastAppliedBoostMode = -1;
+            _lastMatchedApp = string.Empty;
+            _lastMatchedBoostMode = -1;
+            _lastMatchedPid = 0;
             Logger.WriteLine("AppAutoBoost service stopped.");
         }
 
@@ -170,6 +186,68 @@ namespace GHelper.Helpers
         {
             if (eventType != EVENT_SYSTEM_FOREGROUND) return;
             Task.Run(() => CheckActiveForegroundApp());
+        }
+
+        private static bool IsProcessStillRunning(int pid)
+        {
+            if (pid <= 0) return false;
+            try
+            {
+                using var p = System.Diagnostics.Process.GetProcessById(pid);
+                return !p.HasExited;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool TryFindRunningTargetApp(out string appName, out int boostMode, out int pid)
+        {
+            appName = string.Empty;
+            boostMode = -1;
+            pid = 0;
+
+            if (_lastMatchedPid > 0 && IsProcessStillRunning(_lastMatchedPid))
+            {
+                appName = _lastMatchedApp;
+                boostMode = _lastMatchedBoostMode;
+                pid = _lastMatchedPid;
+                return true;
+            }
+
+            lock (_ruleLock)
+            {
+                if (_rules == null || _rules.Count == 0) return false;
+
+                var runningProcesses = System.Diagnostics.Process.GetProcesses();
+                try
+                {
+                    foreach (var rule in _rules)
+                    {
+                        foreach (var proc in runningProcesses)
+                        {
+                            try
+                            {
+                                if (proc.ProcessName.Equals(rule.ProcessName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    appName = rule.ProcessName;
+                                    boostMode = rule.BoostMode;
+                                    pid = proc.Id;
+                                    return true;
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+                }
+                finally
+                {
+                    foreach (var p in runningProcesses) p.Dispose();
+                }
+            }
+
+            return false;
         }
 
         private static void CheckActiveForegroundApp()
@@ -214,15 +292,34 @@ namespace GHelper.Helpers
                     _lastAppliedBoostMode = matchedRule.BoostMode;
                     Logger.WriteLine($"AppAutoBoost matched '{procName}': Switched CPU Boost to mode {matchedRule.BoostMode}");
                 }
+
+                _lastMatchedApp = matchedRule.ProcessName;
+                _lastMatchedBoostMode = matchedRule.BoostMode;
+                _lastMatchedPid = (int)pid;
             }
             else
             {
                 if (_defaultBoostMode != -1)
                 {
-                    PowerNative.SetCPUBoost(_defaultBoostMode);
-                    Logger.WriteLine($"AppAutoBoost unfocused target app: Restored CPU Boost to mode {_defaultBoostMode}");
-                    _lastAppliedBoostMode = -1;
-                    _defaultBoostMode = -1;
+                    if (IsAltTabProtectionEnabled && TryFindRunningTargetApp(out string bgApp, out int bgMode, out int bgPid))
+                    {
+                        if (_lastAppliedBoostMode != bgMode)
+                        {
+                            PowerNative.SetCPUBoost(bgMode);
+                            _lastAppliedBoostMode = bgMode;
+                        }
+                        Logger.WriteLine($"AppAutoBoost Alt+Tab protection active: Keeping CPU Boost at mode {bgMode} for background app '{bgApp}' (PID {bgPid})");
+                    }
+                    else
+                    {
+                        PowerNative.SetCPUBoost(_defaultBoostMode);
+                        Logger.WriteLine($"AppAutoBoost unfocused target app: Restored CPU Boost to mode {_defaultBoostMode}");
+                        _lastAppliedBoostMode = -1;
+                        _defaultBoostMode = -1;
+                        _lastMatchedApp = string.Empty;
+                        _lastMatchedBoostMode = -1;
+                        _lastMatchedPid = 0;
+                    }
                 }
             }
         }

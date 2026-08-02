@@ -461,9 +461,22 @@ namespace GHelper.Overlay
             double cpuTemp = D(HardwareControl.cpuTemp);
             bool gpuActive = gpuTemp > 0;
 
+            int cpuBoostMode = GHelper.Mode.PowerNative.GetCPUBoost();
+            string boostTag = cpuBoostMode switch
+            {
+                0 => "OFF",
+                1 => "ON",
+                2 => "AGG",
+                3 => "EFF",
+                4 => "EFF.AGG",
+                5 => "AGG.G",
+                6 => "EFF.AGG.G",
+                _ => $"M{cpuBoostMode}"
+            };
+
             // Trailing space is the separator between temp and fan number
             _gpuTempStr = "GPU:" + FmtTemp(gpuTemp) + " ";
-            _cpuTempStr = "CPU:" + FmtTemp(cpuTemp) + " ";
+            _cpuTempStr = "CPU:" + FmtTemp(cpuTemp) + " [" + boostTag + "] ";
             _gpuFanNum = FormatFan(HardwareControl.gpuFanRPM);
             _cpuFanNum = FormatFan(HardwareControl.cpuFanRPM);
             _gpuPow = HardwareControl.gpuPower is null ? "" : Math.Round(HardwareControl.gpuPower.Value, 1).ToString("F1") + "W";

@@ -10,6 +10,7 @@ namespace GHelper.UI
     public class AppAutoBoostForm : RForm
     {
         private RCheckBox _checkEnable;
+        private RCheckBox _checkAltTabProtection;
         private ListView _listRules;
         private RButton _buttonAddRunning;
         private RButton _buttonAddFile;
@@ -33,7 +34,7 @@ namespace GHelper.UI
         {
             Text = "Target App Auto CPU Boost";
             Width = 620;
-            Height = 460;
+            Height = 490;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
@@ -52,12 +53,25 @@ namespace GHelper.UI
                 AppAutoBoostManager.IsEnabled = _checkEnable.Checked;
             };
 
+            _checkAltTabProtection = new RCheckBox
+            {
+                Text = "Keep CPU Boost Active on Alt+Tab (Background Game Protection)",
+                Left = 15,
+                Top = 405,
+                AutoSize = true,
+                Checked = AppAutoBoostManager.IsAltTabProtectionEnabled
+            };
+            _checkAltTabProtection.CheckedChanged += (s, e) =>
+            {
+                AppAutoBoostManager.IsAltTabProtectionEnabled = _checkAltTabProtection.Checked;
+            };
+
             _listRules = new ListView
             {
                 Left = 15,
                 Top = 45,
                 Width = 440,
-                Height = 350,
+                Height = 345,
                 View = View.Details,
                 FullRowSelect = true,
                 GridLines = true,
@@ -122,6 +136,7 @@ namespace GHelper.UI
             _comboMode.SelectedIndexChanged += ComboMode_SelectedIndexChanged;
 
             Controls.Add(_checkEnable);
+            Controls.Add(_checkAltTabProtection);
             Controls.Add(_listRules);
             Controls.Add(_buttonAddRunning);
             Controls.Add(_buttonAddFile);
