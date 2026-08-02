@@ -562,183 +562,97 @@ namespace GHelper.Overlay
             int lineH = S(sc, BaseLineHeight);
             int lineGap = S(sc, BaseLineSpacing);
             int radius = S(sc, CornerRadius);
-            int fpsColW = S(sc, BaseFpsColWidth);
-            int chartColW = S(sc, BaseChartColWidth);
-            int powColW = S(sc, BasePowerColWidth);
-            int colGap = S(sc, BaseColGap);
-            int powGap = S(sc, BasePowerGap);
 
-            int innerH = lineH * 2 + lineGap;
+            double gpuTemp = D(HardwareControl.gpuTemp);
+            double cpuTemp = D(HardwareControl.cpuTemp);
+            bool gpuActive = gpuTemp > 0;
+
+            int cpuBoostMode = GHelper.Mode.PowerNative.GetCPUBoost();
+            string boostTag = cpuBoostMode switch
+            {
+                0 => "OFF",
+                1 => "ON",
+                2 => "AGG",
+                3 => "EFF",
+                4 => "EFF.AGG",
+                5 => "AGG.G",
+                6 => "EFF.AGG.G",
+                _ => $"M{cpuBoostMode}"
+            };
+
+            // Build CPU Row Text
+            List<string> cpuParts = new();
+            cpuParts.Add("CPU");
+            if (cpuTemp > 0) cpuParts.Add($"{(int)Math.Round(cpuTemp)}°C");
+            if (_cpuUsage.HasValue && _cpuUsage.Value > 0) cpuParts.Add($"{_cpuUsage.Value}%");
+            if (HardwareControl.cpuPower > 0) cpuParts.Add($"{Math.Round(HardwareControl.cpuPower.Value, 1)}W");
+            cpuParts.Add($"[{boostTag}]");
+            string cpuRowStr = string.Join(" │ ", cpuParts);
+
+            // Build GPU Row Text
+            List<string> gpuParts = new();
+            gpuParts.Add("GPU");
+            if (gpuTemp > 0) gpuParts.Add($"{(int)Math.Round(gpuTemp)}°C");
+            if (_gpuUsage.HasValue && _gpuUsage.Value > 0) gpuParts.Add($"{_gpuUsage.Value}%");
+            if (HardwareControl.gpuPower > 0) gpuParts.Add($"{Math.Round(HardwareControl.gpuPower.Value, 1)}W");
+            if (!string.IsNullOrEmpty(_gpuFanNum)) gpuParts.Add($"{_gpuFanNum} RPM");
+            string gpuRowStr = string.Join(" │ ", gpuParts);
+
+            // Build SYS / FPS Row Text (if active)
+            List<string> sysParts = new();
+            if (_currentFps > 0) sysParts.Add($"FPS {_currentFps}");
+            if (_ramUsage.HasValue && _ramUsedMb.HasValue && _ramUsage.Value > 0) sysParts.Add($"RAM {(_ramUsedMb.Value / 1024.0):F1}GB");
+            if (_showBattery && _onBattery && !string.IsNullOrEmpty(_batLevel)) sysParts.Add($"BAT {_batLevel}");
+            string sysRowStr = sysParts.Count > 0 ? string.Join(" │ ", sysParts) : "";
+
+            int rowCount = string.IsNullOrEmpty(sysRowStr) ? 2 : 3;
+            int innerH = lineH * rowCount + lineGap * (rowCount - 1);
             int totalH = padY * 2 + innerH;
-
-            bool showFps = _showFps, showTemp = _showTemp, showFans = _showFans, showChart = _showChart;
-            bool showPower = _showPower, showUsageMetric = _showUsage, showMem = _showRam, showNames = _showNames;
-            bool showBat = _showBattery && _onBattery;
-            bool showUsage = _showUsage || _showRam; // bar sizing is shared by the usage and ram bars
-
-            int nameColW = showNames ? S(sc, BaseNameColWidth) : 0;
-            int usageNumColW = S(sc, BaseUsageNumColWidth);
-            int barW = S(sc, BaseUsageBarWidth);
-            int memNumColW = S(sc, BaseMemNumColWidth);
-            int batColW = S(sc, BaseBatColWidth);
-
-            int cursor = padX;
-            if (showFps && _currentFps > 0) cursor += fpsColW + colGap;
-
-            int nameX = cursor;
-            if (showNames) cursor += nameColW + colGap;
-
-            int leftX = cursor;
-            cursor += S(sc, showTemp && showFans ? BaseLeftColWidth : showTemp || showFans ? BaseLightLeftColWidth : 0);
-
-            int chartX = cursor;
-            if (showChart) cursor += chartColW;
-
-            int powX = cursor;
-            if (showPower) { powX = cursor + powGap; cursor = powX + powColW; }
-
-            int usageNumX = cursor, barX = cursor;
-            if (showUsageMetric)
-            {
-                usageNumX = cursor + S(sc, BaseUsageBarGap);
-                barX = usageNumX + usageNumColW + S(sc, BaseUsageNumGap);
-                cursor = barX + barW;
-            }
-
-            int memNumX = cursor, memBarX = cursor;
-            if (showMem)
-            {
-                memNumX = cursor + S(sc, BaseMemBarGap);
-                memBarX = memNumX + memNumColW + S(sc, BaseUsageNumGap);
-                cursor = memBarX + barW;
-            }
-
-            int batX = cursor, batIconX = cursor;
-            if (showBat)
-            {
-                batX = cursor + S(sc, BaseBatColGap);
-                batIconX = batX + batColW + S(sc, BaseBatIconGap);
-                cursor = batIconX + S(sc, BaseBatIconWidth);
-            }
-
-            int width = cursor + padX;
-
-            if (Size.Width != width || Size.Height != totalH)
-                Size = new Size(width, totalH);
 
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
             g.TextRenderingHint = _scalePercent <= 75 ? TextRenderingHint.ClearTypeGridFit : TextRenderingHint.AntiAliasGridFit;
 
+            if (sc != _lastScale || _font == null)
+            {
+                _lastScale = sc;
+                _font?.Dispose(); _font = new Font("Segoe UI", BaseFontSize * sc, FontStyle.Bold, GraphicsUnit.Pixel);
+            }
+
+            var font = _font!;
+
+            float w1 = g.MeasureString(cpuRowStr, font).Width;
+            float w2 = g.MeasureString(gpuRowStr, font).Width;
+            float w3 = string.IsNullOrEmpty(sysRowStr) ? 0 : g.MeasureString(sysRowStr, font).Width;
+            int maxRowWidth = (int)Math.Ceiling(Math.Max(w1, Math.Max(w2, w3)));
+            int width = padX * 2 + maxRowWidth;
+
+            if (Size.Width != width || Size.Height != totalH)
+                Size = new Size(width, totalH);
+
+            // Background & Border
             g.FillRoundedRectangle(_dragModeActive && _bgAlpha < DragMinAlpha ? _dragBgBrush : _bgBrush, Bound, radius);
             using (var borderPen = new Pen(Color.FromArgb(90, 80, 80, 95), 1.0f * sc))
             {
                 g.DrawRoundedRectangle(borderPen, Bound, radius);
             }
 
-            if (sc != _lastScale)
+            // Draw Section Rows
+            int currentY = padY;
+
+            // Row 1: CPU
+            g.DrawString(cpuRowStr, font, _cpuBrush, new PointF(padX, currentY));
+            currentY += lineH + lineGap;
+
+            // Row 2: GPU
+            g.DrawString(gpuRowStr, font, _gpuBrush, new PointF(padX, currentY));
+
+            // Row 3: SYS / FPS (optional)
+            if (!string.IsNullOrEmpty(sysRowStr))
             {
-                _lastScale = sc;
-                _font?.Dispose();    _font    = new Font("Consolas", BaseFontSize * sc, FontStyle.Regular, GraphicsUnit.Pixel);
-                _rpmFont?.Dispose(); _rpmFont = new Font("Consolas", BaseRpmFontSize * sc, FontStyle.Regular, GraphicsUnit.Pixel);
-                _fpsBold?.Dispose(); _fpsBold = new Font("Consolas", innerH / 1.15f, FontStyle.Bold, GraphicsUnit.Pixel);
-                _totalPen?.Dispose(); _totalPen = new Pen(Color.FromArgb(255, 200, 200, 200), sc * 0.75f) { DashStyle = DashStyle.Dot };
-                _axPen?.Dispose();    _axPen    = new Pen(Color.FromArgb(255, 80, 80, 80), sc * 0.5f);
-                _charW = g.MeasureString("XX", _font).Width - g.MeasureString("X", _font).Width;
-            }
-
-            var font    = _font!;
-            var rpmFont = _rpmFont!;
-            var fpsBold = _fpsBold!;
-
-            float charW = _charW;
-
-            int topY = padY;
-            // Nudge per-row text down so it lines up with the vertically centered usage bars.
-            int textY = topY + (int)Math.Round(sc);
-
-            // FPS
-            if (showFps && _currentFps > 0)
-            {
-                string fpsStr = _currentFps.ToString();
-                float fpsW = g.MeasureString(fpsStr, fpsBold).Width;
-                g.DrawString(fpsStr, fpsBold, _gpuBrush,
-                new PointF(padX + (fpsColW - fpsW) / 2f, topY));
-            }
-
-            if (showNames)
-            {
-                var savedClip = g.Save();
-                g.SetClip(new RectangleF(nameX, topY, nameColW, innerH));
-                g.DrawString(_gpuShortName, font, _gpuBrush, new PointF(nameX, textY));
-                g.DrawString(_cpuShortName, font, _cpuBrush, new PointF(nameX, textY + lineH + lineGap));
-                g.Restore(savedClip);
-            }
-
-            // Left column: fan RPM hidden in Light mode
-            DrawTempFan(g, font, rpmFont, charW, sc, leftX, textY, showTemp ? _gpuTempStr : "", showFans ? _gpuFanNum : "", _gpuBrush);
-            DrawTempFan(g, font, rpmFont, charW, sc, leftX, textY + lineH + lineGap, showTemp ? _cpuTempStr : "", showFans ? _cpuFanNum : "", _cpuBrush);
-
-            // Chart — hidden in Light mode
-            if (showChart)
-                DrawStackedChart(g, chartX, topY, chartColW, innerH, sc);
-
-            // Power — right-aligned, drawn in all modes
-            if (showPower && _gpuPow.Length > 0)
-                g.DrawString(_gpuPow, font, _gpuBrush,
-                new PointF(powX + powColW - g.MeasureString(_gpuPow, font).Width, textY));
-            if (showPower && _cpuPow.Length > 0)
-                g.DrawString(_cpuPow, font, _cpuBrush,
-                new PointF(powX + powColW - g.MeasureString(_cpuPow, font).Width, textY + lineH + lineGap));
-
-            if (showUsage)
-            {
-                // Bar sizing: fixed bar height per DPI; cellH grows with DPI but sepH stays 1.
-                int cellH = Math.Max(1, (int)Math.Floor(sc));
-                int sepH = 1;
-                int targetBarH = S(sc, BaseUsageBarHeight);
-                int pitch = cellH + sepH;
-                int numCells = Math.Max(2, (targetBarH + sepH) / pitch);
-                int barH = numCells * cellH + (numCells - 1) * sepH;
-                int barYOff = (lineH - barH) / 2 - S(sc, BaseUsageBarYNudge);
-                int row2Y = lineH + lineGap;
-
-                if (showUsageMetric)
-                {
-                    DrawUsageBar(g, barX, topY + barYOff, barW, cellH, sepH, numCells, _gpuUsage ?? 0, _gpuBrush, _gpuFillBrush);
-                    DrawUsageBar(g, barX, topY + row2Y + barYOff, barW, cellH, sepH, numCells, _cpuUsage ?? 0, _cpuBrush, _cpuFillBrush);
-
-                    DrawUsagePercent(g, font, usageNumX, usageNumColW, textY,           _gpuUsage, _gpuBrush);
-                    DrawUsagePercent(g, font, usageNumX, usageNumColW, textY + row2Y,   _cpuUsage, _cpuBrush);
-                }
-
-                // VRAM (GPU row) / RAM (CPU row) — complete mode only
-                if (showMem)
-                {
-                    DrawMemGb(g, font, memNumX, memNumColW, textY,         _vramUsedMb, _gpuBrush);
-                    DrawMemGb(g, font, memNumX, memNumColW, textY + row2Y, _ramUsedMb, _cpuBrush);
-
-                    DrawUsageBar(g, memBarX, topY + barYOff, barW, cellH, sepH, numCells, _vramUsage ?? 0, _gpuBrush, _gpuFillBrush);
-                    DrawUsageBar(g, memBarX, topY + row2Y + barYOff, barW, cellH, sepH, numCells, _ramUsage ?? 0, _cpuBrush, _cpuFillBrush);
-                }
-            }
-
-            if (showBat)
-            {
-                if (_batLevel.Length > 0)
-                    g.DrawString(_batLevel, font, _batBrush,
-                    new PointF(batX + batColW - g.MeasureString(_batLevel, font).Width, textY));
-                if (_batRate.Length > 0)
-                {
-                    g.DrawString(_batRate, font, _batBrush,
-                    new PointF(batX + batColW - g.MeasureString(_batRate, font).Width, textY + lineH + lineGap));
-                    g.DrawString("W", font, _batBrush,
-                    new PointF(batIconX + (S(sc, BaseBatIconWidth) - g.MeasureString("W", font).Width) / 2f, textY + lineH + lineGap));
-                }
-
-                int batIconH = S(sc, BaseBatIconHeight);
-                DrawBatteryIcon(g, batIconX, topY + (lineH - batIconH) / 2 - S(sc, BaseUsageBarYNudge), batIconH, sc, _batPercent, _batCharging);
+                currentY += lineH + lineGap;
+                g.DrawString(sysRowStr, font, _batBrush, new PointF(padX, currentY));
             }
         }
 
