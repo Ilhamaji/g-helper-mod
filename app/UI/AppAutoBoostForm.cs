@@ -11,6 +11,7 @@ namespace GHelper.UI
     {
         private RCheckBox _checkEnable;
         private RCheckBox _checkAltTabProtection;
+        private RCheckBox _checkDiscordOptimization;
         private ListView _listRules;
         private RButton _buttonAddRunning;
         private RButton _buttonAddFile;
@@ -34,7 +35,7 @@ namespace GHelper.UI
         {
             Text = "Target App Auto CPU Boost";
             Width = 620;
-            Height = 490;
+            Height = 500;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
@@ -57,13 +58,26 @@ namespace GHelper.UI
             {
                 Text = "Keep CPU Boost Active on Alt+Tab (Background Game Protection)",
                 Left = 15,
-                Top = 405,
+                Top = 398,
                 AutoSize = true,
                 Checked = AppAutoBoostManager.IsAltTabProtectionEnabled
             };
             _checkAltTabProtection.CheckedChanged += (s, e) =>
             {
                 AppAutoBoostManager.IsAltTabProtectionEnabled = _checkAltTabProtection.Checked;
+            };
+
+            _checkDiscordOptimization = new RCheckBox
+            {
+                Text = "Optimize Discord Voice CPU Priority During Gaming",
+                Left = 15,
+                Top = 425,
+                AutoSize = true,
+                Checked = AppAutoBoostManager.IsDiscordOptimizationEnabled
+            };
+            _checkDiscordOptimization.CheckedChanged += (s, e) =>
+            {
+                AppAutoBoostManager.IsDiscordOptimizationEnabled = _checkDiscordOptimization.Checked;
             };
 
             _listRules = new ListView
@@ -137,6 +151,7 @@ namespace GHelper.UI
 
             Controls.Add(_checkEnable);
             Controls.Add(_checkAltTabProtection);
+            Controls.Add(_checkDiscordOptimization);
             Controls.Add(_listRules);
             Controls.Add(_buttonAddRunning);
             Controls.Add(_buttonAddFile);

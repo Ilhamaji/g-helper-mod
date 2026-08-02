@@ -48,9 +48,18 @@ namespace GHelper.Helpers
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool QueryFullProcessImageName(IntPtr hProcess, uint dwFlags, StringBuilder lpExeName, ref uint lpdwSize);
 
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern uint GetPriorityClass(IntPtr hProcess);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetPriorityClass(IntPtr hProcess, uint dwPriorityClass);
+
         private const uint WINEVENT_OUTOFCONTEXT = 0;
         private const uint EVENT_SYSTEM_FOREGROUND = 3;
         private const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+        private const uint PROCESS_SET_INFORMATION = 0x0200;
+        private const uint BELOW_NORMAL_PRIORITY_CLASS = 0x00004000;
+        private const uint NORMAL_PRIORITY_CLASS = 0x00000020;
 
         // ── Fields ────────────────────────────────────────────────────────────
         private static WinEventDelegate? _winEventDelegate;
@@ -67,6 +76,11 @@ namespace GHelper.Helpers
         private static string _lastMatchedApp = string.Empty;
         private static int _lastMatchedPid = 0;
         private static System.Threading.Timer? _processMonitorTimer;
+        private static bool _wasDiscordOptimized = false;
+        private static readonly HashSet<string> _discordProcessNames = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Discord", "DiscordPTB", "DiscordCanary", "DiscordDevelopment", "DiscordSystemHelper"
+        };
 
         public static bool IsEnabled
         {
@@ -83,6 +97,12 @@ namespace GHelper.Helpers
         {
             get => AppConfig.IsNotFalse("app_auto_boost_alt_tab_protection");
             set => AppConfig.Set("app_auto_boost_alt_tab_protection", value ? 1 : 0);
+        }
+
+        public static bool IsDiscordOptimizationEnabled
+        {
+            get => AppConfig.IsNotFalse("app_auto_boost_discord_optimization");
+            set => AppConfig.Set("app_auto_boost_discord_optimization", value ? 1 : 0);
         }
 
         public static List<TargetAppRule> GetRules()
@@ -153,6 +173,7 @@ namespace GHelper.Helpers
         public static void ResetDefaultBoost()
         {
             StopProcessMonitoring();
+            OptimizeDiscord(false);
             _defaultBoostMode = -1;
             _lastAppliedBoostMode = -1;
             _lastMatchedApp = string.Empty;
@@ -165,6 +186,7 @@ namespace GHelper.Helpers
             if (!_isServiceRunning) return;
 
             StopProcessMonitoring();
+            OptimizeDiscord(false);
 
             if (_hookHandle != IntPtr.Zero)
             {
@@ -301,6 +323,7 @@ namespace GHelper.Helpers
                 _lastMatchedBoostMode = matchedRule.BoostMode;
                 _lastMatchedPid = (int)pid;
                 StartProcessMonitoring();
+                OptimizeDiscord(true);
             }
             else
             {
@@ -318,6 +341,7 @@ namespace GHelper.Helpers
                         _lastMatchedPid = bgPid;
                         Logger.WriteLine($"AppAutoBoost Alt+Tab protection active: Keeping CPU Boost at mode {bgMode} for background app '{bgApp}' (PID {bgPid})");
                         StartProcessMonitoring();
+                        OptimizeDiscord(true);
                     }
                     else
                     {
@@ -329,8 +353,66 @@ namespace GHelper.Helpers
                         _lastMatchedBoostMode = -1;
                         _lastMatchedPid = 0;
                         StopProcessMonitoring();
+                        OptimizeDiscord(false);
                     }
                 }
+            }
+        }
+
+        public static void OptimizeDiscord(bool enable)
+        {
+            if (!IsDiscordOptimizationEnabled && enable)
+            {
+                if (_wasDiscordOptimized) OptimizeDiscord(false);
+                return;
+            }
+            if (_wasDiscordOptimized == enable) return;
+
+            uint targetPriority = enable ? BELOW_NORMAL_PRIORITY_CLASS : NORMAL_PRIORITY_CLASS;
+
+            try
+            {
+                var processes = System.Diagnostics.Process.GetProcesses();
+                try
+                {
+                    foreach (var p in processes)
+                    {
+                        try
+                        {
+                            if (_discordProcessNames.Contains(p.ProcessName))
+                            {
+                                IntPtr hProcess = OpenProcess(PROCESS_SET_INFORMATION | PROCESS_QUERY_LIMITED_INFORMATION, false, (uint)p.Id);
+                                if (hProcess != IntPtr.Zero)
+                                {
+                                    try
+                                    {
+                                        uint currentClass = GetPriorityClass(hProcess);
+                                        if (currentClass != targetPriority && currentClass != 0)
+                                        {
+                                            SetPriorityClass(hProcess, targetPriority);
+                                            Logger.WriteLine($"AppAutoBoost: Set Discord process '{p.ProcessName}' (PID {p.Id}) priority to {(enable ? "BelowNormal" : "Normal")}");
+                                        }
+                                    }
+                                    finally
+                                    {
+                                        CloseHandle(hProcess);
+                                    }
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                }
+                finally
+                {
+                    foreach (var p in processes) p.Dispose();
+                }
+
+                _wasDiscordOptimized = enable;
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteLine("OptimizeDiscord error: " + ex.Message);
             }
         }
 
