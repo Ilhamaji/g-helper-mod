@@ -99,6 +99,10 @@ namespace GHelper.Helpers
                     {
                         File.Copy(localRnnoise, rnnoiseTarget, true);
                     }
+                    else
+                    {
+                        ExtractEmbeddedPlugin("GHelper.rnnoise_mono.dll", rnnoiseTarget);
+                    }
                 }
 
                 string ggateTarget = Path.Combine(vstTargetDir, "GGate.dll");
@@ -109,12 +113,39 @@ namespace GHelper.Helpers
                     {
                         File.Copy(localGGate, ggateTarget, true);
                     }
+                    else
+                    {
+                        ExtractEmbeddedPlugin("GHelper.GGate.dll", ggateTarget);
+                    }
                 }
                 _vstPluginsEnsured = true;
             }
             catch (Exception ex)
             {
                 Logger.WriteLine("EnsureVstPlugins error: " + ex.Message);
+            }
+        }
+
+        private static void ExtractEmbeddedPlugin(string resourceName, string targetPath)
+        {
+            try
+            {
+                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+                using Stream? stream = assembly.GetManifestResourceStream(resourceName);
+                if (stream != null)
+                {
+                    using FileStream fileStream = new FileStream(targetPath, FileMode.Create, FileAccess.Write);
+                    stream.CopyTo(fileStream);
+                    Logger.WriteLine($"Extracted embedded VST plugin '{resourceName}' to '{targetPath}'");
+                }
+                else
+                {
+                    Logger.WriteLine($"Embedded resource '{resourceName}' not found in assembly.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteLine($"Failed to extract embedded VST plugin '{resourceName}': {ex.Message}");
             }
         }
 

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -77,6 +77,12 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Pawn\IntelMSR.bin">
       <LogicalName>GHelper.IntelMSR.bin</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\rnnoise_mono.dll">
+      <LogicalName>GHelper.rnnoise_mono.dll</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\GGate.dll">
+      <LogicalName>GHelper.GGate.dll</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
 
