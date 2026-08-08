@@ -20,6 +20,7 @@ namespace GHelper.UI
         private Label _labelPreampTitle;
         private RTrackBar _trackPreamp;
         private Label _labelPreampValue;
+        private RCheckBox _checkSoftClip;
 
         private Label _labelPresetTitle;
         private RComboBox _comboPreset;
@@ -46,7 +47,7 @@ namespace GHelper.UI
         {
             Text = "Microphone Noise EQ & AI Suppression";
             Width = 480;
-            Height = 490;
+            Height = 525;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
@@ -160,8 +161,8 @@ namespace GHelper.UI
                 Top = 235,
                 Width = 425,
                 Minimum = -20,
-                Maximum = 20,
-                Value = Math.Clamp(AppConfig.Get("mic_preamp_gain"), -20, 20)
+                Maximum = 30,
+                Value = Math.Clamp(AppConfig.Get("mic_preamp_gain"), -20, 30)
             };
             _trackPreamp.ValueChanged += (s, e) =>
             {
@@ -170,18 +171,33 @@ namespace GHelper.UI
             };
             _trackPreamp.MouseUp += (s, e) => ApplyAndShowStatus();
 
+            _checkSoftClip = new RCheckBox
+            {
+                Text = "Anti-Clipping Peak Protection (Prevent Sound Distortion / Pecah)",
+                Left = 20,
+                Top = 280,
+                Width = 425,
+                AutoSize = true,
+                Checked = AppConfig.Get("mic_softclip_enabled", 1) != 0
+            };
+            _checkSoftClip.CheckedChanged += (s, e) =>
+            {
+                AppConfig.Set("mic_softclip_enabled", _checkSoftClip.Checked ? 1 : 0);
+                ApplyAndShowStatus();
+            };
+
             _labelPresetTitle = new Label
             {
                 Text = "Equalizer Preset Profile:",
                 Left = 20,
-                Top = 285,
+                Top = 315,
                 AutoSize = true
             };
 
             _comboPreset = new RComboBox
             {
                 Left = 20,
-                Top = 305,
+                Top = 335,
                 Width = 425,
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
@@ -201,7 +217,7 @@ namespace GHelper.UI
             {
                 Text = "Status: Ready",
                 Left = 20,
-                Top = 355,
+                Top = 385,
                 Width = 425,
                 Height = 35,
                 ForeColor = Color.DarkGray
@@ -211,7 +227,7 @@ namespace GHelper.UI
             {
                 Text = "Apply Now",
                 Left = 345,
-                Top = 400,
+                Top = 430,
                 Width = 100,
                 Height = 32
             };
@@ -227,6 +243,7 @@ namespace GHelper.UI
             Controls.Add(_labelPreampTitle);
             Controls.Add(_labelPreampValue);
             Controls.Add(_trackPreamp);
+            Controls.Add(_checkSoftClip);
             Controls.Add(_labelPresetTitle);
             Controls.Add(_comboPreset);
             Controls.Add(_labelStatus);

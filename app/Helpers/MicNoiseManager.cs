@@ -165,13 +165,14 @@ namespace GHelper.Helpers
                 string ggatePath = @"C:\Program Files\EqualizerAPO\VSTPlugins\vst\GGate.dll";
 
                 bool isRnnoiseEnabled = AppConfig.Is("mic_rnnoise_enabled");
+                bool isSoftClipEnabled = AppConfig.Get("mic_softclip_enabled", 1) != 0;
                 int presetProfile = AppConfig.Get("mic_preset_profile");
                 double gateThreshold = AppConfig.Get("mic_gate_threshold"); // -100 to 0 dB
-                double preampGain = AppConfig.Get("mic_preamp_gain"); // -20 to +20 dB
+                double preampGain = Math.Clamp(AppConfig.Get("mic_preamp_gain"), -20, 30); // -20 to +30 dB
                 string targetDevice = AppConfig.GetString("mic_target_device") ?? "all";
 
                 StringBuilder sb = new StringBuilder(2048);
-                sb.AppendLine("# G-Helper — Microphone Noise Suppression");
+                sb.AppendLine("# G-Helper — Microphone Noise Suppression & Gain Protection");
                 sb.AppendLine("# Auto-generated. Do not edit manually.");
                 sb.AppendLine();
 
@@ -226,12 +227,19 @@ namespace GHelper.Helpers
 
                     if (Math.Abs(preampGain) > 0.01)
                     {
-                        sb.AppendLine("# [Stage 4: Post-AI Gain Recovery + Preamp]");
+                        sb.AppendLine("# [Stage 4: Post-AI Gain Recovery + Preamp Boost]");
                         sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "Preamp: {0:F1} dB", preampGain));
                         sb.AppendLine();
                     }
 
                     AppendPresetEQ(sb, presetProfile);
+
+                    if (isSoftClipEnabled)
+                    {
+                        sb.AppendLine();
+                        sb.AppendLine("# [Stage 5: Anti-Clipping Peak Protection Guard]");
+                        sb.AppendLine("Filter: ON SoftClip");
+                    }
                 }
 
                 sb.AppendLine();
