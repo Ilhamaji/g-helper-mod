@@ -171,6 +171,10 @@ namespace GHelper.Helpers
                 double preampGain = Math.Clamp(AppConfig.Get("mic_preamp_gain"), -20, 30); // -20 to +30 dB
                 string targetDevice = AppConfig.GetString("mic_target_device") ?? "all";
 
+                bool isEchoEnabled = AppConfig.Get("mic_echo_enabled", presetProfile == 1 ? 1 : 0) != 0 || presetProfile == 1;
+                int echoLevel = Math.Clamp(AppConfig.Get("mic_echo_level", 60), 0, 100);
+                int echoDelay = Math.Clamp(AppConfig.Get("mic_echo_delay", 120), 50, 300);
+
                 StringBuilder sb = new StringBuilder(2048);
                 sb.AppendLine("# G-Helper — Microphone Noise Suppression & Gain Protection");
                 sb.AppendLine("# Auto-generated. Do not edit manually.");
@@ -234,6 +238,49 @@ namespace GHelper.Helpers
 
                     AppendPresetEQ(sb, presetProfile);
 
+                    if (isEchoEnabled && presetProfile != 9 && echoLevel > 0)
+                    {
+                        sb.AppendLine();
+                        sb.AppendLine("# [Stage 4.5: Karaoke Studio Vocal Echo & Reverb Delay Matrix]");
+
+                        double levelOffset = (echoLevel - 60) * 0.25;
+                        double tap1Gain = Math.Min(-1.0, -11.0 + levelOffset);
+                        double tap2Gain = Math.Min(-4.0, -16.0 + levelOffset);
+                        double tap3Gain = Math.Min(-7.0, -21.0 + levelOffset);
+                        double tap4Gain = Math.Min(-10.0, -26.0 + levelOffset);
+
+                        int d1 = echoDelay;
+                        int d2 = echoDelay * 2;
+                        int d3 = echoDelay * 3;
+                        int d4 = (int)(echoDelay * 4.2);
+
+                        sb.AppendLine("Copy: DRY1=1 DRY2=2 E1_1=1 E1_2=2 E2_1=1 E2_2=2 E3_1=1 E3_2=2 E4_1=1 E4_2=2");
+                        sb.AppendLine();
+                        sb.AppendLine("# Tap 1: Slapback Vocal Echo");
+                        sb.AppendLine("Channel: E1_1 E1_2");
+                        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "Delay: {0} ms", d1));
+                        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "Preamp: {0:F1} dB", tap1Gain));
+                        sb.AppendLine();
+                        sb.AppendLine("# Tap 2: Rhythmic Echo Repeat 1");
+                        sb.AppendLine("Channel: E2_1 E2_2");
+                        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "Delay: {0} ms", d2));
+                        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "Preamp: {0:F1} dB", tap2Gain));
+                        sb.AppendLine();
+                        sb.AppendLine("# Tap 3: Rhythmic Echo Repeat 2");
+                        sb.AppendLine("Channel: E3_1 E3_2");
+                        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "Delay: {0} ms", d3));
+                        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "Preamp: {0:F1} dB", tap3Gain));
+                        sb.AppendLine();
+                        sb.AppendLine("# Tap 4: Spacious Acoustic Reverb Decay Tail");
+                        sb.AppendLine("Channel: E4_1 E4_2");
+                        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "Delay: {0} ms", d4));
+                        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "Preamp: {0:F1} dB", tap4Gain));
+                        sb.AppendLine();
+                        sb.AppendLine("# Sum Dry Voice + Multi-Tap Karaoke Echo");
+                        sb.AppendLine("Copy: 1=DRY1+E1_1+E2_1+E3_1+E4_1 2=DRY2+E1_2+E2_2+E3_2+E4_2");
+                        sb.AppendLine("Channel: all");
+                    }
+
                     if (isSoftClipEnabled)
                     {
                         sb.AppendLine();
@@ -270,8 +317,8 @@ namespace GHelper.Helpers
                     sb.AppendLine("Filter: ON LP Fc 16000 Hz");
                     break;
                 case 1:
-                    sb.AppendLine("# [Preset: Karaoke Vocal Master - Studio Singing Tone]");
-                    sb.AppendLine("Preamp: 2.0 dB");
+                    sb.AppendLine("# [Preset: Karaoke Vocal Master - Studio Singing Mic with Echo]");
+                    sb.AppendLine("Preamp: 2.5 dB");
                     sb.AppendLine("Filter: ON PK Fc 160 Hz Gain 5.5 dB Q 0.95");
                     sb.AppendLine("Filter: ON PK Fc 480 Hz Gain -4.5 dB Q 1.10");
                     sb.AppendLine("Filter: ON PK Fc 2800 Hz Gain 6.5 dB Q 1.20");

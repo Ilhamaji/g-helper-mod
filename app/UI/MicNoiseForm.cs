@@ -25,6 +25,15 @@ namespace GHelper.UI
         private Label _labelPresetTitle;
         private RComboBox _comboPreset;
 
+        private RCheckBox _checkEcho;
+        private Label _labelEchoLevelTitle;
+        private RTrackBar _trackEchoLevel;
+        private Label _labelEchoLevelValue;
+
+        private Label _labelEchoDelayTitle;
+        private RTrackBar _trackEchoDelay;
+        private Label _labelEchoDelayValue;
+
         private Label _labelStatus;
         private RButton _buttonApply;
 
@@ -33,7 +42,7 @@ namespace GHelper.UI
         private static readonly string[] Presets = new string[]
         {
             "Studio Podcast Pro (SM7B Warmth)",
-            "Karaoke Vocal Master (Singing Lead)",
+            "Karaoke Vocal Master (Singing Echo Mic)",
             "Podcast Warm & Deep (Radio Voice)",
             "Studio Condenser Crisp (Airy Vocal)",
             "Gamer Streamer Pro (Focus & Keyclick Cut)",
@@ -47,7 +56,7 @@ namespace GHelper.UI
         {
             Text = "Microphone Noise EQ & AI Suppression";
             Width = 480;
-            Height = 525;
+            Height = 635;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
@@ -95,7 +104,7 @@ namespace GHelper.UI
             {
                 Text = "RNNoise AI Noise Suppression (Neural Network VST)",
                 Left = 20,
-                Top = 110,
+                Top = 105,
                 AutoSize = true,
                 Checked = AppConfig.Is("mic_rnnoise_enabled")
             };
@@ -105,19 +114,21 @@ namespace GHelper.UI
                 ApplyAndShowStatus();
             };
 
+            int savedGate = AppConfig.Get("mic_gate_threshold") == 0 ? -40 : Math.Clamp(AppConfig.Get("mic_gate_threshold"), -100, 0);
+
             _labelGateTitle = new Label
             {
                 Text = "Volume Noise Gate Threshold:",
                 Left = 20,
-                Top = 145,
+                Top = 135,
                 AutoSize = true
             };
 
             _labelGateValue = new Label
             {
-                Text = "-40 dB",
+                Text = $"{savedGate} dB",
                 Left = 380,
-                Top = 145,
+                Top = 135,
                 AutoSize = true,
                 TextAlign = ContentAlignment.TopRight
             };
@@ -125,11 +136,11 @@ namespace GHelper.UI
             _trackGate = new RTrackBar
             {
                 Left = 20,
-                Top = 165,
+                Top = 155,
                 Width = 425,
                 Minimum = -100,
                 Maximum = 0,
-                Value = AppConfig.Get("mic_gate_threshold") == 0 ? -40 : Math.Clamp(AppConfig.Get("mic_gate_threshold"), -100, 0)
+                Value = savedGate
             };
             _trackGate.ValueChanged += (s, e) =>
             {
@@ -138,19 +149,21 @@ namespace GHelper.UI
             };
             _trackGate.MouseUp += (s, e) => ApplyAndShowStatus();
 
+            int savedPreamp = Math.Clamp(AppConfig.Get("mic_preamp_gain"), -20, 30);
+
             _labelPreampTitle = new Label
             {
                 Text = "Preamp & Gain Boost:",
                 Left = 20,
-                Top = 215,
+                Top = 205,
                 AutoSize = true
             };
 
             _labelPreampValue = new Label
             {
-                Text = "+0.0 dB",
+                Text = $"{savedPreamp:+0.0;-0.0;+0.0} dB",
                 Left = 380,
-                Top = 215,
+                Top = 205,
                 AutoSize = true,
                 TextAlign = ContentAlignment.TopRight
             };
@@ -158,11 +171,11 @@ namespace GHelper.UI
             _trackPreamp = new RTrackBar
             {
                 Left = 20,
-                Top = 235,
+                Top = 225,
                 Width = 425,
                 Minimum = -20,
                 Maximum = 30,
-                Value = Math.Clamp(AppConfig.Get("mic_preamp_gain"), -20, 30)
+                Value = savedPreamp
             };
             _trackPreamp.ValueChanged += (s, e) =>
             {
@@ -175,7 +188,7 @@ namespace GHelper.UI
             {
                 Text = "Anti-Clipping Peak Protection (Prevent Sound Distortion / Pecah)",
                 Left = 20,
-                Top = 280,
+                Top = 270,
                 Width = 425,
                 AutoSize = true,
                 Checked = AppConfig.Get("mic_softclip_enabled", 1) != 0
@@ -190,14 +203,14 @@ namespace GHelper.UI
             {
                 Text = "Equalizer Preset Profile:",
                 Left = 20,
-                Top = 315,
+                Top = 300,
                 AutoSize = true
             };
 
             _comboPreset = new RComboBox
             {
                 Left = 20,
-                Top = 335,
+                Top = 320,
                 Width = 425,
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
@@ -210,14 +223,99 @@ namespace GHelper.UI
             _comboPreset.SelectedIndexChanged += (s, e) =>
             {
                 AppConfig.Set("mic_preset_profile", _comboPreset.SelectedIndex);
+                if (_comboPreset.SelectedIndex == 1)
+                {
+                    _checkEcho.Checked = true;
+                    AppConfig.Set("mic_echo_enabled", 1);
+                }
                 ApplyAndShowStatus();
             };
+
+            _checkEcho = new RCheckBox
+            {
+                Text = "Karaoke Vocal Echo & Reverb (Mic Singing Echo)",
+                Left = 20,
+                Top = 360,
+                AutoSize = true,
+                Checked = AppConfig.Get("mic_echo_enabled", savedPreset == 1 ? 1 : 0) != 0 || savedPreset == 1
+            };
+            _checkEcho.CheckedChanged += (s, e) =>
+            {
+                AppConfig.Set("mic_echo_enabled", _checkEcho.Checked ? 1 : 0);
+                ApplyAndShowStatus();
+            };
+
+            _labelEchoLevelTitle = new Label
+            {
+                Text = "Echo Intensity Level:",
+                Left = 20,
+                Top = 390,
+                AutoSize = true
+            };
+
+            _labelEchoLevelValue = new Label
+            {
+                Text = $"{Math.Clamp(AppConfig.Get("mic_echo_level", 60), 0, 100)}%",
+                Left = 380,
+                Top = 390,
+                AutoSize = true,
+                TextAlign = ContentAlignment.TopRight
+            };
+
+            _trackEchoLevel = new RTrackBar
+            {
+                Left = 20,
+                Top = 410,
+                Width = 425,
+                Minimum = 0,
+                Maximum = 100,
+                Value = Math.Clamp(AppConfig.Get("mic_echo_level", 60), 0, 100)
+            };
+            _trackEchoLevel.ValueChanged += (s, e) =>
+            {
+                _labelEchoLevelValue.Text = $"{_trackEchoLevel.Value}%";
+                AppConfig.Set("mic_echo_level", _trackEchoLevel.Value);
+            };
+            _trackEchoLevel.MouseUp += (s, e) => ApplyAndShowStatus();
+
+            _labelEchoDelayTitle = new Label
+            {
+                Text = "Echo Delay Time:",
+                Left = 20,
+                Top = 450,
+                AutoSize = true
+            };
+
+            _labelEchoDelayValue = new Label
+            {
+                Text = $"{Math.Clamp(AppConfig.Get("mic_echo_delay", 120), 60, 250)} ms",
+                Left = 380,
+                Top = 450,
+                AutoSize = true,
+                TextAlign = ContentAlignment.TopRight
+            };
+
+            _trackEchoDelay = new RTrackBar
+            {
+                Left = 20,
+                Top = 470,
+                Width = 425,
+                Minimum = 60,
+                Maximum = 250,
+                Value = Math.Clamp(AppConfig.Get("mic_echo_delay", 120), 60, 250)
+            };
+            _trackEchoDelay.ValueChanged += (s, e) =>
+            {
+                _labelEchoDelayValue.Text = $"{_trackEchoDelay.Value} ms";
+                AppConfig.Set("mic_echo_delay", _trackEchoDelay.Value);
+            };
+            _trackEchoDelay.MouseUp += (s, e) => ApplyAndShowStatus();
 
             _labelStatus = new Label
             {
                 Text = "Status: Ready",
                 Left = 20,
-                Top = 385,
+                Top = 515,
                 Width = 425,
                 Height = 35,
                 ForeColor = Color.DarkGray
@@ -227,7 +325,7 @@ namespace GHelper.UI
             {
                 Text = "Apply Now",
                 Left = 345,
-                Top = 430,
+                Top = 550,
                 Width = 100,
                 Height = 32
             };
@@ -246,6 +344,13 @@ namespace GHelper.UI
             Controls.Add(_checkSoftClip);
             Controls.Add(_labelPresetTitle);
             Controls.Add(_comboPreset);
+            Controls.Add(_checkEcho);
+            Controls.Add(_labelEchoLevelTitle);
+            Controls.Add(_labelEchoLevelValue);
+            Controls.Add(_trackEchoLevel);
+            Controls.Add(_labelEchoDelayTitle);
+            Controls.Add(_labelEchoDelayValue);
+            Controls.Add(_trackEchoDelay);
             Controls.Add(_labelStatus);
             Controls.Add(_buttonApply);
 
