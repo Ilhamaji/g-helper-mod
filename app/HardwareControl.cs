@@ -497,18 +497,23 @@ public static class HardwareControl
 
     public static float? GetGPUTemp()
     {
+        if (AppConfig.NoGpu()) return null;
+
+        if (GpuControl is null || !GpuControl.IsValid)
+        {
+            RecreateGpuControl();
+        }
+
         try
         {
             gpuTemp = GpuControl?.GetCurrentTemperature();
-
         }
         catch (Exception)
         {
             gpuTemp = -1;
-            //Debug.WriteLine("Failed reading GPU temp :" + ex.Message);
         }
 
-        if (gpuTemp is null || gpuTemp < 0)
+        if (gpuTemp is null || gpuTemp <= 0)
         {
             int acpiTemp = Program.acpi.DeviceGet(AsusACPI.Temp_GPU);
             gpuTemp = (acpiTemp > 0 && acpiTemp < 125) ? acpiTemp : null;
@@ -837,8 +842,19 @@ public static class HardwareControl
 
         if (Program.acpi is null) return;
 
+        if (!AppConfig.NoGpu() && (GpuControl is null || !GpuControl.IsValid))
+        {
+            RecreateGpuControl();
+        }
+
         cpuFan = FanSensorControl.FormatFan(AsusFan.CPU, Program.acpi.GetFan(AsusFan.CPU));
-        gpuFan = FanSensorControl.FormatFan(AsusFan.GPU, Program.acpi.GetFan(AsusFan.GPU));
+
+        int rawGpuFan = Program.acpi.GetFan(AsusFan.GPU);
+        if (rawGpuFan < 0 && !AppConfig.NoGpu())
+        {
+            rawGpuFan = 0;
+        }
+        gpuFan = FanSensorControl.FormatFan(AsusFan.GPU, rawGpuFan);
         midFan = FanSensorControl.FormatFan(AsusFan.Mid, Program.acpi.GetFan(AsusFan.Mid));
 
         cpuTemp = GetCPUTemp();

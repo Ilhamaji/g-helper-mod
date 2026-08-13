@@ -1653,7 +1653,15 @@ namespace GHelper
                 Program.settingsForm.BeginInvoke(delegate
                 {
                     labelCPUFan.Text = "CPU" + cpuTemp + "  " + cpuFan;
-                    labelGPUFan.Text = "GPU" + gpuTemp + "  " + gpuFan;
+
+                    if (AppConfig.NoGpu())
+                    {
+                        labelGPUFan.Text = "GPU: Eco (Off)";
+                    }
+                    else
+                    {
+                        labelGPUFan.Text = "GPU" + (gpuTemp.Length > 0 ? gpuTemp : ": --°C") + "  " + gpuFan;
+                    }
 
                     if (HardwareControl.gpuFan is not null && AppConfig.NoGpu())
                         labelMidFan.Text = "GPU" + gpuTemp + " " + gpuFan;

@@ -1,4 +1,4 @@
-﻿using GHelper.Helpers;
+using GHelper.Helpers;
 using NvAPIWrapper.GPU;
 using NvAPIWrapper.Native;
 using NvAPIWrapper.Native.GPU;
@@ -101,18 +101,25 @@ public class NvidiaGpuControl : IGpuControl
         var state = GetGpuState();
         if (state == GpuState.Off) return null;
 
-        if ((_readTask?.IsCompleted ?? true) && (state == GpuState.Active || ShouldRefresh()))
+        if (_readTask?.IsCompleted ?? true)
         {
-            _readTask = Task.Run(() =>
+            if (ShouldRefresh())
             {
-                var temp = ReadCurrentTemperature();
-                if (temp is not null)
+                _readTask = Task.Run(() =>
                 {
-                    _lastTemp = temp;
-                    _lastTempTime = Environment.TickCount;
-                }
-                return temp;
-            });
+                    try
+                    {
+                        var temp = ReadCurrentTemperature();
+                        if (temp is not null && temp > 0)
+                        {
+                            _lastTemp = temp;
+                            _lastTempTime = Environment.TickCount;
+                        }
+                    }
+                    catch { }
+                    return _lastTemp;
+                });
+            }
         }
 
         _readTask?.Wait(500);
@@ -122,25 +129,10 @@ public class NvidiaGpuControl : IGpuControl
 
     private bool ShouldRefresh()
     {
-        const int minInterval = 5_000;
-        const int maxInterval = 120_000;
-        const float deltaMin = 5f;
-        const float deltaMax = 20f;
-
         if (_lastTemp is null) return true;
 
-        var cpuTemp = (float)HardwareControl.GetCPUTemp();
-        var delta = _lastTemp.Value - cpuTemp;
-
-        if (delta < deltaMin) return false;
-
-        var t = Math.Clamp((delta - deltaMin) / (deltaMax - deltaMin), 0f, 1f);
-        var interval = (int)(maxInterval - t * (maxInterval - minInterval));
-
-        var refresh = Environment.TickCount > _lastTempTime + interval;
-        if (verboseLog) Logger.WriteLine($"GPU Temp Refresh Interval: {interval}ms {refresh}");
-
-        return refresh;
+        // Refresh GPU temperature every 2 seconds
+        return Environment.TickCount > _lastTempTime + 2000;
     }
 
     public void Dispose()
