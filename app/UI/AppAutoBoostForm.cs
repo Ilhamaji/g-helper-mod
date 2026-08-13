@@ -12,6 +12,8 @@ namespace GHelper.UI
         private RCheckBox _checkEnable;
         private RCheckBox _checkAltTabProtection;
         private RCheckBox _checkDiscordOptimization;
+        private RCheckBox _checkAutoRamFlush;
+        private RCheckBox _checkThermalGuard;
         private ListView _listRules;
         private RButton _buttonAddRunning;
         private RButton _buttonAddFile;
@@ -35,7 +37,7 @@ namespace GHelper.UI
         {
             Text = "Target App Auto CPU Boost";
             Width = 620;
-            Height = 500;
+            Height = 555;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
@@ -71,13 +73,39 @@ namespace GHelper.UI
             {
                 Text = "Optimize Discord Voice CPU Priority During Gaming",
                 Left = 15,
-                Top = 425,
+                Top = 423,
                 AutoSize = true,
                 Checked = AppAutoBoostManager.IsDiscordOptimizationEnabled
             };
             _checkDiscordOptimization.CheckedChanged += (s, e) =>
             {
                 AppAutoBoostManager.IsDiscordOptimizationEnabled = _checkDiscordOptimization.Checked;
+            };
+
+            _checkAutoRamFlush = new RCheckBox
+            {
+                Text = "Auto-Flush RAM & Standby Cache on Game Launch",
+                Left = 15,
+                Top = 448,
+                AutoSize = true,
+                Checked = AppAutoBoostManager.IsAutoRamFlushEnabled
+            };
+            _checkAutoRamFlush.CheckedChanged += (s, e) =>
+            {
+                AppAutoBoostManager.IsAutoRamFlushEnabled = _checkAutoRamFlush.Checked;
+            };
+
+            _checkThermalGuard = new RCheckBox
+            {
+                Text = "Thermal Guard: Prevent CPU Overheating & Thermal Throttling Spikes",
+                Left = 15,
+                Top = 473,
+                AutoSize = true,
+                Checked = AppAutoBoostManager.IsThermalGuardEnabled
+            };
+            _checkThermalGuard.CheckedChanged += (s, e) =>
+            {
+                AppAutoBoostManager.IsThermalGuardEnabled = _checkThermalGuard.Checked;
             };
 
             _listRules = new ListView
@@ -152,6 +180,8 @@ namespace GHelper.UI
             Controls.Add(_checkEnable);
             Controls.Add(_checkAltTabProtection);
             Controls.Add(_checkDiscordOptimization);
+            Controls.Add(_checkAutoRamFlush);
+            Controls.Add(_checkThermalGuard);
             Controls.Add(_listRules);
             Controls.Add(_buttonAddRunning);
             Controls.Add(_buttonAddFile);

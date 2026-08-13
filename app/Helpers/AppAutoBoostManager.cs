@@ -105,6 +105,18 @@ namespace GHelper.Helpers
             set => AppConfig.Set("app_auto_boost_discord_optimization", value ? 1 : 0);
         }
 
+        public static bool IsAutoRamFlushEnabled
+        {
+            get => AppConfig.IsNotFalse("app_auto_boost_ram_flush");
+            set => AppConfig.Set("app_auto_boost_ram_flush", value ? 1 : 0);
+        }
+
+        public static bool IsThermalGuardEnabled
+        {
+            get => AppConfig.IsNotFalse("app_auto_boost_thermal_guard");
+            set => AppConfig.Set("app_auto_boost_thermal_guard", value ? 1 : 0);
+        }
+
         public static List<TargetAppRule> GetRules()
         {
             lock (_ruleLock)
@@ -246,30 +258,25 @@ namespace GHelper.Helpers
             {
                 if (_rules == null || _rules.Count == 0) return false;
 
-                var runningProcesses = System.Diagnostics.Process.GetProcesses();
-                try
+                foreach (var rule in _rules)
                 {
-                    foreach (var rule in _rules)
+                    if (string.IsNullOrWhiteSpace(rule.ProcessName)) continue;
+                    var procs = System.Diagnostics.Process.GetProcessesByName(rule.ProcessName);
+                    try
                     {
-                        foreach (var proc in runningProcesses)
+                        if (procs.Length > 0 && !procs[0].HasExited)
                         {
-                            try
-                            {
-                                if (proc.ProcessName.Equals(rule.ProcessName, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    appName = rule.ProcessName;
-                                    boostMode = rule.BoostMode;
-                                    pid = proc.Id;
-                                    return true;
-                                }
-                            }
-                            catch { }
+                            appName = rule.ProcessName;
+                            boostMode = rule.BoostMode;
+                            pid = procs[0].Id;
+                            return true;
                         }
                     }
-                }
-                finally
-                {
-                    foreach (var p in runningProcesses) p.Dispose();
+                    catch { }
+                    finally
+                    {
+                        foreach (var p in procs) p.Dispose();
+                    }
                 }
             }
 
@@ -312,11 +319,26 @@ namespace GHelper.Helpers
                     _defaultBoostMode = PowerNative.GetCPUBoost();
                 }
 
-                if (_lastAppliedBoostMode != matchedRule.BoostMode)
+                int targetBoostMode = matchedRule.BoostMode;
+                if (IsThermalGuardEnabled && (targetBoostMode == 2 || targetBoostMode == 1))
                 {
-                    PowerNative.SetCPUBoost(matchedRule.BoostMode);
-                    _lastAppliedBoostMode = matchedRule.BoostMode;
-                    Logger.WriteLine($"AppAutoBoost matched '{procName}': Switched CPU Boost to mode {matchedRule.BoostMode}");
+                    targetBoostMode = 4; // Efficient Aggressive mode to prevent thermal throttling
+                }
+
+                if (_lastAppliedBoostMode != targetBoostMode)
+                {
+                    PowerNative.SetCPUBoost(targetBoostMode);
+                    _lastAppliedBoostMode = targetBoostMode;
+                    Logger.WriteLine($"AppAutoBoost matched '{procName}': Switched CPU Boost to mode {targetBoostMode} (ThermalGuard={(IsThermalGuardEnabled ? "ON" : "OFF")})");
+                }
+
+                if (IsAutoRamFlushEnabled && !procName.Equals(_lastMatchedApp, StringComparison.OrdinalIgnoreCase))
+                {
+                    Task.Run(() =>
+                    {
+                        long freedBytes = MemoryCleaner.CleanMemory(purgeStandby: true, emptyWorkingSets: true);
+                        Logger.WriteLine($"AppAutoBoost: Auto RAM & Standby Cache Flush executed for '{procName}', freed {freedBytes / (1024 * 1024)} MB");
+                    });
                 }
 
                 _lastMatchedApp = matchedRule.ProcessName;
@@ -331,15 +353,21 @@ namespace GHelper.Helpers
                 {
                     if (IsAltTabProtectionEnabled && TryFindRunningTargetApp(out string bgApp, out int bgMode, out int bgPid))
                     {
-                        if (_lastAppliedBoostMode != bgMode)
+                        int targetBgMode = bgMode;
+                        if (IsThermalGuardEnabled && (targetBgMode == 2 || targetBgMode == 1))
                         {
-                            PowerNative.SetCPUBoost(bgMode);
-                            _lastAppliedBoostMode = bgMode;
+                            targetBgMode = 4; // Efficient Aggressive mode
+                        }
+
+                        if (_lastAppliedBoostMode != targetBgMode)
+                        {
+                            PowerNative.SetCPUBoost(targetBgMode);
+                            _lastAppliedBoostMode = targetBgMode;
                         }
                         _lastMatchedApp = bgApp;
                         _lastMatchedBoostMode = bgMode;
                         _lastMatchedPid = bgPid;
-                        Logger.WriteLine($"AppAutoBoost Alt+Tab protection active: Keeping CPU Boost at mode {bgMode} for background app '{bgApp}' (PID {bgPid})");
+                        Logger.WriteLine($"AppAutoBoost Alt+Tab protection active: Keeping CPU Boost at mode {targetBgMode} for background app '{bgApp}' (PID {bgPid})");
                         StartProcessMonitoring();
                         OptimizeDiscord(true);
                     }
@@ -371,14 +399,14 @@ namespace GHelper.Helpers
 
             try
             {
-                var processes = System.Diagnostics.Process.GetProcesses();
-                try
+                foreach (var discordName in _discordProcessNames)
                 {
-                    foreach (var p in processes)
+                    var processes = System.Diagnostics.Process.GetProcessesByName(discordName);
+                    try
                     {
-                        try
+                        foreach (var p in processes)
                         {
-                            if (_discordProcessNames.Contains(p.ProcessName))
+                            try
                             {
                                 IntPtr hProcess = OpenProcess(PROCESS_SET_INFORMATION | PROCESS_QUERY_LIMITED_INFORMATION, false, (uint)p.Id);
                                 if (hProcess != IntPtr.Zero)
@@ -400,13 +428,13 @@ namespace GHelper.Helpers
                                     }
                                 }
                             }
+                            catch { }
                         }
-                        catch { }
                     }
-                }
-                finally
-                {
-                    foreach (var p in processes) p.Dispose();
+                    finally
+                    {
+                        foreach (var p in processes) p.Dispose();
+                    }
                 }
 
                 _wasDiscordOptimized = enable;
