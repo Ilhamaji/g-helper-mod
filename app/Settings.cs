@@ -1,4 +1,4 @@
-﻿using GHelper.Ally;
+using GHelper.Ally;
 using GHelper.AnimeMatrix;
 using GHelper.AutoUpdate;
 using GHelper.Battery;
@@ -97,6 +97,7 @@ namespace GHelper
             buttonMatrix.Text = Properties.Strings.PictureGif;
             buttonQuit.Text = Properties.Strings.Quit;
             buttonUpdates.Text = Properties.Strings.Updates;
+            buttonUpdates.Visible = false;
             buttonDonate.Text = Properties.Strings.Donate;
 
             buttonController.Text = Properties.Strings.Controller;
@@ -701,7 +702,6 @@ namespace GHelper
             if (this.Visible)
             {
                 Task.Run((Action)RefreshPeripheralsBattery);
-                updateControl.CheckForUpdates();
             }
         }
 

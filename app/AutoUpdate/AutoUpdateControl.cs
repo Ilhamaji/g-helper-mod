@@ -1,4 +1,4 @@
-﻿using GHelper.Helpers;
+using GHelper.Helpers;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Reflection;
@@ -26,115 +26,24 @@ namespace GHelper.AutoUpdate
 
         public void CheckForUpdates()
         {
-            // Run update once per 12 hours
-            if (Math.Abs(DateTimeOffset.Now.ToUnixTimeSeconds() - lastUpdate) < 43200) return;
-            lastUpdate = DateTimeOffset.Now.ToUnixTimeSeconds();
-
-            Task.Run(async () =>
-            {
-                await Task.Delay(TimeSpan.FromSeconds(1));
-                CheckForUpdatesAsync();
-            });
+            // Update feature completely disabled by user request
+            return;
         }
 
         public void Update()
         {
-            if (update)
-            {
-                Task.Run(() =>
-                {
-                    CheckForUpdatesAsync(true);
-                });
-            } else
-            {
-                LoadReleases();
-            }
+            // Update feature completely disabled by user request
+            return;
         }
 
         public void LoadReleases()
         {
-            try
-            {
-                Process.Start(new ProcessStartInfo(versionUrl) { UseShellExecute = true });
-            }
-            catch (Exception ex)
-            {
-                Logger.WriteLine("Failed to open releases page:" + ex.Message);
-            }
+            return;
         }
 
         async void CheckForUpdatesAsync(bool force = false)
         {
-
-            if (AppConfig.Is("skip_updates")) return;
-
-            try
-            {
-
-                using (var httpClient = new HttpClient())
-                {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", "G-Helper App");
-                    var json = await httpClient.GetStringAsync("https://api.github.com/repos/seerge/g-helper/releases/latest");
-                    var config = JsonSerializer.Deserialize<JsonElement>(json);
-                    var tag = config.GetProperty("tag_name").ToString().Replace("v", "");
-                    var assets = config.GetProperty("assets");
-
-                    string url = null;
-
-                    for (int i = 0; i < assets.GetArrayLength(); i++)
-                    {
-                        if (assets[i].GetProperty("browser_download_url").ToString().Contains(".zip"))
-                            url = assets[i].GetProperty("browser_download_url").ToString();
-                    }
-
-                    if (url is null)
-                        url = assets[0].GetProperty("browser_download_url").ToString();
-
-                    var gitVersion = new Version(tag);
-                    var appVersion = new Version(Assembly.GetExecutingAssembly().GetName().Version.ToString());
-                    //appVersion = new Version("0.50.0.0"); 
-
-                    if (gitVersion.CompareTo(appVersion) > 0)
-                    {
-                        versionUrl = url;
-                        update = true;
-                        settings.SetVersionLabel(Properties.Strings.DownloadUpdate + $": {appVersion.Major}.{appVersion.Minor}.{appVersion.Build} → {tag}", true);
-
-                        string[] args = Environment.GetCommandLineArgs();
-                        if (force || args.Length > 1 && args[1] == "autoupdate")
-                        {
-                            AutoUpdate(url);
-                            return;
-                        }
-
-                        if (AppConfig.GetString("skip_version") != tag)
-                        {
-                            DialogResult dialogResult = DialogResult.No;
-
-                            settings.Invoke((System.Windows.Forms.MethodInvoker)delegate
-                            {
-                                dialogResult = MessageBox.Show(settings, Properties.Strings.DownloadUpdate + ": G-Helper " + tag + "?", "Update", MessageBoxButtons.YesNo);
-                            });
-                            
-                            if (dialogResult == DialogResult.Yes)
-                                AutoUpdate(url);
-                            else
-                                AppConfig.Set("skip_version", tag);
-                        }
-
-                    }
-                    else
-                    {
-                        Logger.WriteLine($"Latest version {appVersion}");
-                    }
-
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.WriteLine("Failed to check for updates:" + ex.Message);
-            }
-
+            return;
         }
 
         public static string EscapeString(string input)

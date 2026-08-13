@@ -366,7 +366,6 @@ namespace GHelper.Helpers
                 if (_wasDiscordOptimized) OptimizeDiscord(false);
                 return;
             }
-            if (_wasDiscordOptimized == enable) return;
 
             uint targetPriority = enable ? BELOW_NORMAL_PRIORITY_CLASS : NORMAL_PRIORITY_CLASS;
 
@@ -389,8 +388,10 @@ namespace GHelper.Helpers
                                         uint currentClass = GetPriorityClass(hProcess);
                                         if (currentClass != targetPriority && currentClass != 0)
                                         {
-                                            SetPriorityClass(hProcess, targetPriority);
-                                            Logger.WriteLine($"AppAutoBoost: Set Discord process '{p.ProcessName}' (PID {p.Id}) priority to {(enable ? "BelowNormal" : "Normal")}");
+                                            if (SetPriorityClass(hProcess, targetPriority))
+                                            {
+                                                Logger.WriteLine($"AppAutoBoost: Set Discord process '{p.ProcessName}' (PID {p.Id}) priority to {(enable ? "BelowNormal" : "Normal")}");
+                                            }
                                         }
                                     }
                                     finally
@@ -449,6 +450,13 @@ namespace GHelper.Helpers
                     _currentActiveApp = string.Empty;
                     StopProcessMonitoring();
                     Task.Run(() => CheckActiveForegroundApp());
+                }
+                else
+                {
+                    if (IsDiscordOptimizationEnabled)
+                    {
+                        OptimizeDiscord(true);
+                    }
                 }
             }
             else
