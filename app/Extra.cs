@@ -513,10 +513,11 @@ namespace GHelper
             Panel panelCustomFeatures = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 160,
-                Padding = new Padding(10)
+                Height = 200,
+                Padding = new Padding(10, 8, 10, 8)
             };
 
+            // ── Header ───────────────────────────────────────────────────────
             Label labelHeader = new Label
             {
                 Text = "CPU Boost Pro & Audio Enhancements",
@@ -526,33 +527,35 @@ namespace GHelper
                 AutoSize = true
             };
 
+            // ── Row 1: Boost controls ────────────────────────────────────────
             RButton buttonAppBoost = new RButton
             {
                 Text = "Target App Auto Boost...",
                 Left = 10,
                 Top = 30,
-                Width = 180,
-                Height = 30
+                Width = 175,
+                Height = 28
             };
             buttonAppBoost.Click += (s, e) => { using var f = new AppAutoBoostForm(); f.ShowDialog(this); };
 
             RCheckBox checkAntiFreeze = new RCheckBox
             {
-                Text = "CPU Boost Anti-Freeze Protection",
-                Left = 205,
-                Top = 35,
+                Text = "Anti-Freeze Protection",
+                Left = 195,
+                Top = 33,
                 AutoSize = true,
                 Checked = CpuAntiFreezeManager.IsEnabled
             };
             checkAntiFreeze.CheckedChanged += (s, e) => { CpuAntiFreezeManager.IsEnabled = checkAntiFreeze.Checked; };
 
+            // ── Row 2: RAM controls ──────────────────────────────────────────
             RButton buttonCleanRam = new RButton
             {
                 Text = "Clean Standby RAM",
                 Left = 10,
-                Top = 70,
-                Width = 180,
-                Height = 30
+                Top = 65,
+                Width = 175,
+                Height = 28
             };
             buttonCleanRam.Click += (s, e) =>
             {
@@ -563,8 +566,8 @@ namespace GHelper
             RCheckBox checkAutoRam = new RCheckBox
             {
                 Text = "Auto Standby Memory Cleaner",
-                Left = 205,
-                Top = 75,
+                Left = 195,
+                Top = 68,
                 AutoSize = true,
                 Checked = AppConfig.Is("auto_ram_cleaner_enabled")
             };
@@ -574,38 +577,60 @@ namespace GHelper
                 MemoryCleaner.SetAutoCleaner(checkAutoRam.Checked);
             };
 
+            // ── Row 3: Mic EQ ────────────────────────────────────────────────
             RButton buttonMicEq = new RButton
             {
                 Text = "Mic Noise EQ Settings...",
                 Left = 10,
-                Top = 110,
-                Width = 180,
-                Height = 30
+                Top = 100,
+                Width = 175,
+                Height = 28
             };
             buttonMicEq.Click += (s, e) => { using var f = new MicNoiseForm(); f.ShowDialog(this); };
 
-            // ── Idle Boost Guard ─────────────────────────────────────────────
-            RCheckBox checkIdleGuard = new RCheckBox
+            // ── Separator ────────────────────────────────────────────────────
+            Label labelSep1 = new Label
+            {
+                BorderStyle = BorderStyle.Fixed3D,
+                Left = 10,
+                Top = 138,
+                Width = 520,
+                Height = 2,
+                Anchor = AnchorStyles.Left | AnchorStyles.Right
+            };
+
+            // ── Row 4-5: Idle Boost Guard ────────────────────────────────────
+            Label labelGuardHeader = new Label
             {
                 Text = "Idle Boost Guard",
-                Left = 405,
-                Top = 33,
+                Font = new Font(Font, FontStyle.Bold),
+                Left = 10,
+                Top = 145,
+                AutoSize = true
+            };
+
+            RCheckBox checkIdleGuard = new RCheckBox
+            {
+                Text = "Auto-lower CPU boost when idle to prevent freeze",
+                Left = 130,
+                Top = 144,
                 AutoSize = true,
                 Checked = IdleBoostGuard.IsEnabled
             };
 
             Label labelGuardThreshold = new Label
             {
-                Text = $"Idle CPU < {IdleBoostGuard.IdleUsageThreshold}%",
-                Left = 405,
-                Top = 60,
-                AutoSize = true
+                Text = $"CPU < {IdleBoostGuard.IdleUsageThreshold}%",
+                Left = 130,
+                Top = 168,
+                AutoSize = true,
+                Width = 70
             };
 
             RTrackBar trackGuardThreshold = new RTrackBar
             {
-                Left = 480,
-                Top = 54,
+                Left = 200,
+                Top = 162,
                 Width = 120,
                 Minimum = 1,
                 Maximum = 50,
@@ -615,15 +640,16 @@ namespace GHelper
             Label labelGuardHold = new Label
             {
                 Text = $"Hold {IdleBoostGuard.HoldSeconds}s",
-                Left = 405,
-                Top = 90,
-                AutoSize = true
+                Left = 330,
+                Top = 168,
+                AutoSize = true,
+                Width = 65
             };
 
             RTrackBar trackGuardHold = new RTrackBar
             {
-                Left = 480,
-                Top = 84,
+                Left = 395,
+                Top = 162,
                 Width = 120,
                 Minimum = 3,
                 Maximum = 60,
@@ -633,27 +659,28 @@ namespace GHelper
             Label labelGuardSafe = new Label
             {
                 Text = "Safe mode",
-                Left = 405,
-                Top = 120,
-                AutoSize = true
+                Left = 130,
+                Top = 190,
+                AutoSize = true,
+                Width = 65
             };
 
             int[] guardModeValues = { 0, 1, 3, 4, 5, 6 };
             string[] guardModeNames =
             {
-                "Disabled (0)",
-                "Enabled (1)",
-                "Efficient Enabled (3)",
-                "Efficient Aggressive (4)",
-                "Aggressive at Guaranteed (5)",
-                "Efficient Aggr. Gtd (6)"
+                "Disabled",
+                "Enabled",
+                "Efficient Enabled",
+                "Efficient Aggressive",
+                "Aggressive at Guaranteed",
+                "Efficient Aggr. Gtd"
             };
 
             RComboBox comboGuardSafeMode = new RComboBox
             {
-                Left = 480,
-                Top = 113,
-                Width = 120,
+                Left = 200,
+                Top = 187,
+                Width = 180,
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
             foreach (var name in guardModeNames) comboGuardSafeMode.Items.Add(name);
@@ -681,7 +708,7 @@ namespace GHelper
             trackGuardThreshold.ValueChanged += (s, e) =>
             {
                 AppConfig.Set("idle_boost_cpu_threshold", trackGuardThreshold.Value);
-                labelGuardThreshold.Text = $"Idle CPU < {trackGuardThreshold.Value}%";
+                labelGuardThreshold.Text = $"CPU < {trackGuardThreshold.Value}%";
             };
 
             trackGuardHold.ValueChanged += (s, e) =>
@@ -703,6 +730,8 @@ namespace GHelper
             panelCustomFeatures.Controls.Add(buttonCleanRam);
             panelCustomFeatures.Controls.Add(checkAutoRam);
             panelCustomFeatures.Controls.Add(buttonMicEq);
+            panelCustomFeatures.Controls.Add(labelSep1);
+            panelCustomFeatures.Controls.Add(labelGuardHeader);
             panelCustomFeatures.Controls.Add(checkIdleGuard);
             panelCustomFeatures.Controls.Add(labelGuardThreshold);
             panelCustomFeatures.Controls.Add(trackGuardThreshold);
