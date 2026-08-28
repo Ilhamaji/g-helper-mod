@@ -62,6 +62,7 @@ namespace GHelper.Helpers
         private const uint NORMAL_PRIORITY_CLASS = 0x00000020;
 
         // ── Fields ────────────────────────────────────────────────────────────
+        private static readonly object _stateLock = new();
         private static WinEventDelegate? _winEventDelegate;
         private static IntPtr _hookHandle = IntPtr.Zero;
         private static bool _isServiceRunning = false;
@@ -172,52 +173,68 @@ namespace GHelper.Helpers
 
         public static void StartService()
         {
-            if (_isServiceRunning) return;
+            lock (_stateLock)
+            {
+                if (_isServiceRunning) return;
 
-            _winEventDelegate = new WinEventDelegate(WinEventProc);
-            _hookHandle = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND,
-                IntPtr.Zero, _winEventDelegate, 0, 0, WINEVENT_OUTOFCONTEXT);
-            _isServiceRunning = true;
-            Logger.WriteLine("AppAutoBoost service started.");
+                _winEventDelegate = new WinEventDelegate(WinEventProc);
+                _hookHandle = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND,
+                    IntPtr.Zero, _winEventDelegate, 0, 0, WINEVENT_OUTOFCONTEXT);
+                _isServiceRunning = true;
+                Logger.WriteLine("AppAutoBoost service started.");
+            }
             CheckActiveForegroundApp();
         }
 
         public static void ResetDefaultBoost()
         {
-            StopProcessMonitoring();
-            OptimizeDiscord(false);
-            _defaultBoostMode = -1;
-            _lastAppliedBoostMode = -1;
-            _lastMatchedApp = string.Empty;
-            _lastMatchedBoostMode = -1;
-            _lastMatchedPid = 0;
+            lock (_stateLock)
+            {
+                if (_defaultBoostMode != -1)
+                {
+                    PowerNative.SetCPUBoost(_defaultBoostMode);
+                    Logger.WriteLine($"AppAutoBoost ResetDefaultBoost: Restored CPU Boost to mode {_defaultBoostMode}");
+                }
+
+                StopProcessMonitoring();
+                OptimizeDiscord(false);
+                _defaultBoostMode = -1;
+                _lastAppliedBoostMode = -1;
+                _lastMatchedApp = string.Empty;
+                _lastMatchedBoostMode = -1;
+                _lastMatchedPid = 0;
+                _currentActiveApp = string.Empty;
+            }
         }
 
         public static void StopService()
         {
-            if (!_isServiceRunning) return;
-
-            StopProcessMonitoring();
-            OptimizeDiscord(false);
-
-            if (_hookHandle != IntPtr.Zero)
+            lock (_stateLock)
             {
-                UnhookWinEvent(_hookHandle);
-                _hookHandle = IntPtr.Zero;
-            }
-            _winEventDelegate = null;
-            _isServiceRunning = false;
+                if (!_isServiceRunning) return;
 
-            if (_defaultBoostMode != -1)
-            {
-                PowerNative.SetCPUBoost(_defaultBoostMode);
-                _defaultBoostMode = -1;
+                StopProcessMonitoring();
+                OptimizeDiscord(false);
+
+                if (_hookHandle != IntPtr.Zero)
+                {
+                    UnhookWinEvent(_hookHandle);
+                    _hookHandle = IntPtr.Zero;
+                }
+                _winEventDelegate = null;
+                _isServiceRunning = false;
+
+                if (_defaultBoostMode != -1)
+                {
+                    PowerNative.SetCPUBoost(_defaultBoostMode);
+                    _defaultBoostMode = -1;
+                }
+                _lastAppliedBoostMode = -1;
+                _lastMatchedApp = string.Empty;
+                _lastMatchedBoostMode = -1;
+                _lastMatchedPid = 0;
+                Logger.WriteLine("AppAutoBoost service stopped.");
             }
-            _lastAppliedBoostMode = -1;
-            _lastMatchedApp = string.Empty;
-            _lastMatchedBoostMode = -1;
-            _lastMatchedPid = 0;
-            Logger.WriteLine("AppAutoBoost service stopped.");
         }
 
         private static void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
@@ -287,101 +304,99 @@ namespace GHelper.Helpers
         {
             if (!_isServiceRunning) return;
 
-            IntPtr hwnd = GetForegroundWindow();
-            if (hwnd == IntPtr.Zero || !IsWindowVisible(hwnd)) return;
-
-            GetWindowThreadProcessId(hwnd, out uint pid);
-            if (pid == 0) return;
-
-            string procName = GetProcessNameFromPid(pid);
-            if (string.IsNullOrEmpty(procName)) return;
-
-            if (procName.Equals(_currentActiveApp, StringComparison.OrdinalIgnoreCase)) return;
-            _currentActiveApp = procName;
-
-            TargetAppRule? matchedRule = null;
-            lock (_ruleLock)
+            lock (_stateLock)
             {
-                foreach (var rule in _rules)
+                IntPtr hwnd = GetForegroundWindow();
+                if (hwnd == IntPtr.Zero || !IsWindowVisible(hwnd)) return;
+
+                GetWindowThreadProcessId(hwnd, out uint pid);
+                if (pid == 0) return;
+
+                string procName = GetProcessNameFromPid(pid);
+                if (string.IsNullOrEmpty(procName)) return;
+
+                if (procName.Equals(_currentActiveApp, StringComparison.OrdinalIgnoreCase)) return;
+                _currentActiveApp = procName;
+
+                TargetAppRule? matchedRule = null;
+                lock (_ruleLock)
                 {
-                    if (procName.Equals(rule.ProcessName, StringComparison.OrdinalIgnoreCase))
+                    foreach (var rule in _rules)
                     {
-                        matchedRule = rule;
-                        break;
+                        if (procName.Equals(rule.ProcessName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            matchedRule = rule;
+                            break;
+                        }
                     }
                 }
-            }
 
-            if (matchedRule != null)
-            {
-                if (_defaultBoostMode == -1)
+                if (matchedRule != null)
                 {
-                    _defaultBoostMode = PowerNative.GetCPUBoost();
-                }
-
-                int targetBoostMode = matchedRule.BoostMode;
-                if (IsThermalGuardEnabled && (targetBoostMode == 2 || targetBoostMode == 1))
-                {
-                    targetBoostMode = 4; // Efficient Aggressive mode to prevent thermal throttling
-                }
-
-                if (_lastAppliedBoostMode != targetBoostMode)
-                {
-                    PowerNative.SetCPUBoost(targetBoostMode);
-                    _lastAppliedBoostMode = targetBoostMode;
-                    Logger.WriteLine($"AppAutoBoost matched '{procName}': Switched CPU Boost to mode {targetBoostMode} (ThermalGuard={(IsThermalGuardEnabled ? "ON" : "OFF")})");
-                }
-
-                if (IsAutoRamFlushEnabled && !procName.Equals(_lastMatchedApp, StringComparison.OrdinalIgnoreCase))
-                {
-                    Task.Run(() =>
+                    if (_defaultBoostMode == -1)
                     {
-                        long freedBytes = MemoryCleaner.CleanMemory(purgeStandby: true, emptyWorkingSets: true);
-                        Logger.WriteLine($"AppAutoBoost: Auto RAM & Standby Cache Flush executed for '{procName}', freed {freedBytes / (1024 * 1024)} MB");
-                    });
-                }
-
-                _lastMatchedApp = matchedRule.ProcessName;
-                _lastMatchedBoostMode = matchedRule.BoostMode;
-                _lastMatchedPid = (int)pid;
-                StartProcessMonitoring();
-                OptimizeDiscord(true);
-            }
-            else
-            {
-                if (_defaultBoostMode != -1)
-                {
-                    if (IsAltTabProtectionEnabled && TryFindRunningTargetApp(out string bgApp, out int bgMode, out int bgPid))
-                    {
-                        int targetBgMode = bgMode;
-                        if (IsThermalGuardEnabled && (targetBgMode == 2 || targetBgMode == 1))
-                        {
-                            targetBgMode = 4; // Efficient Aggressive mode
-                        }
-
-                        if (_lastAppliedBoostMode != targetBgMode)
-                        {
-                            PowerNative.SetCPUBoost(targetBgMode);
-                            _lastAppliedBoostMode = targetBgMode;
-                        }
-                        _lastMatchedApp = bgApp;
-                        _lastMatchedBoostMode = bgMode;
-                        _lastMatchedPid = bgPid;
-                        Logger.WriteLine($"AppAutoBoost Alt+Tab protection active: Keeping CPU Boost at mode {targetBgMode} for background app '{bgApp}' (PID {bgPid})");
-                        StartProcessMonitoring();
-                        OptimizeDiscord(true);
+                        _defaultBoostMode = PowerNative.GetCPUBoost();
+                        Logger.WriteLine($"AppAutoBoost captured default CPU Boost mode {_defaultBoostMode}");
                     }
-                    else
+
+                    int targetBoostMode = matchedRule.BoostMode;
+                    if (IsThermalGuardEnabled && (targetBoostMode == 2 || targetBoostMode == 1))
                     {
-                        PowerNative.SetCPUBoost(_defaultBoostMode);
-                        Logger.WriteLine($"AppAutoBoost unfocused target app: Restored CPU Boost to mode {_defaultBoostMode}");
-                        _lastAppliedBoostMode = -1;
-                        _defaultBoostMode = -1;
-                        _lastMatchedApp = string.Empty;
-                        _lastMatchedBoostMode = -1;
-                        _lastMatchedPid = 0;
-                        StopProcessMonitoring();
-                        OptimizeDiscord(false);
+                        targetBoostMode = 4; // Efficient Aggressive mode to prevent thermal throttling
+                    }
+
+                    if (_lastAppliedBoostMode != targetBoostMode)
+                    {
+                        PowerNative.SetCPUBoost(targetBoostMode);
+                        _lastAppliedBoostMode = targetBoostMode;
+                        Logger.WriteLine($"AppAutoBoost matched '{procName}': Switched CPU Boost to mode {targetBoostMode} (ThermalGuard={(IsThermalGuardEnabled ? "ON" : "OFF")})");
+                    }
+
+                    if (IsAutoRamFlushEnabled && !procName.Equals(_lastMatchedApp, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Task.Run(() =>
+                        {
+                            long freedBytes = MemoryCleaner.CleanMemory(purgeStandby: true, emptyWorkingSets: true);
+                            Logger.WriteLine($"AppAutoBoost: Auto RAM & Standby Cache Flush executed for '{procName}', freed {freedBytes / (1024 * 1024)} MB");
+                        });
+                    }
+
+                    _lastMatchedApp = matchedRule.ProcessName;
+                    _lastMatchedBoostMode = matchedRule.BoostMode;
+                    _lastMatchedPid = (int)pid;
+                    StartProcessMonitoring();
+                    OptimizeDiscord(true);
+                }
+                else
+                {
+                    if (_defaultBoostMode != -1)
+                    {
+                        if (IsAltTabProtectionEnabled && TryFindRunningTargetApp(out string bgApp, out int bgMode, out int bgPid))
+                        {
+                            int targetBgMode = bgMode;
+                            if (IsThermalGuardEnabled && (targetBgMode == 2 || targetBgMode == 1))
+                            {
+                                targetBgMode = 4; // Efficient Aggressive mode
+                            }
+
+                            if (_lastAppliedBoostMode != targetBgMode)
+                            {
+                                PowerNative.SetCPUBoost(targetBgMode);
+                                _lastAppliedBoostMode = targetBgMode;
+                            }
+                            _lastMatchedApp = bgApp;
+                            _lastMatchedBoostMode = bgMode;
+                            _lastMatchedPid = bgPid;
+                            Logger.WriteLine($"AppAutoBoost Alt+Tab protection active: Keeping CPU Boost at mode {targetBgMode} for background app '{bgApp}' (PID {bgPid})");
+                            StartProcessMonitoring();
+                            OptimizeDiscord(true);
+                        }
+                        else
+                        {
+                            RevertBoost("unfocused target app");
+                            StopProcessMonitoring();
+                            OptimizeDiscord(false);
+                        }
                     }
                 }
             }
@@ -465,31 +480,53 @@ namespace GHelper.Helpers
             }
         }
 
+        // Must be called while holding _stateLock.
+        private static void RevertBoost(string reason)
+        {
+            if (_defaultBoostMode != -1)
+            {
+                PowerNative.SetCPUBoost(_defaultBoostMode);
+                Logger.WriteLine($"AppAutoBoost {reason}: Restored CPU Boost to mode {_defaultBoostMode}");
+            }
+
+            _defaultBoostMode = -1;
+            _lastAppliedBoostMode = -1;
+            _lastMatchedApp = string.Empty;
+            _lastMatchedBoostMode = -1;
+            _lastMatchedPid = 0;
+            _currentActiveApp = string.Empty;
+        }
+
         private static void OnProcessMonitorTick(object? state)
         {
             if (!_isServiceRunning) return;
-            int pidToMonitor = _lastMatchedPid;
-            if (pidToMonitor > 0)
+
+            bool needRescan = false;
+            lock (_stateLock)
             {
-                if (!IsProcessStillRunning(pidToMonitor))
+                int pidToMonitor = _lastMatchedPid;
+                if (pidToMonitor > 0)
                 {
-                    Logger.WriteLine($"AppAutoBoost detected background process (PID {pidToMonitor}) has exited. Resetting CPU boost.");
-                    _lastMatchedPid = 0;
-                    _currentActiveApp = string.Empty;
-                    StopProcessMonitoring();
-                    Task.Run(() => CheckActiveForegroundApp());
-                }
-                else
-                {
-                    if (IsDiscordOptimizationEnabled)
+                    if (!IsProcessStillRunning(pidToMonitor))
+                    {
+                        RevertBoost($"detected process (PID {pidToMonitor}) has exited");
+                        StopProcessMonitoring();
+                        needRescan = true;
+                    }
+                    else if (IsDiscordOptimizationEnabled)
                     {
                         OptimizeDiscord(true);
                     }
                 }
+                else
+                {
+                    StopProcessMonitoring();
+                }
             }
-            else
+
+            if (needRescan)
             {
-                StopProcessMonitoring();
+                Task.Run(() => CheckActiveForegroundApp());
             }
         }
 

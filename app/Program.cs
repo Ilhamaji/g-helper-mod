@@ -245,6 +245,9 @@ namespace GHelper
 
         private static void SystemEvents_SessionEnding(object sender, SessionEndingEventArgs e)
         {
+            AppAutoBoostManager.StopService();
+            MemoryCleaner.SetAutoCleaner(false);
+            hardwareOverlay?.StopOverlay();
             gpuControl.StandardModeFix();
             modeControl.ShutdownReset();
             BatteryControl.AutoBattery();

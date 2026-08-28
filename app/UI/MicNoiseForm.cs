@@ -288,7 +288,7 @@ namespace GHelper.UI
 
             _labelEchoDelayValue = new Label
             {
-                Text = $"{Math.Clamp(AppConfig.Get("mic_echo_delay", 120), 60, 250)} ms",
+                Text = $"{Math.Clamp(AppConfig.Get("mic_echo_delay", 120), 50, 300)} ms",
                 Left = 380,
                 Top = 450,
                 AutoSize = true,
@@ -300,9 +300,9 @@ namespace GHelper.UI
                 Left = 20,
                 Top = 470,
                 Width = 425,
-                Minimum = 60,
-                Maximum = 250,
-                Value = Math.Clamp(AppConfig.Get("mic_echo_delay", 120), 60, 250)
+                Minimum = 50,
+                Maximum = 300,
+                Value = Math.Clamp(AppConfig.Get("mic_echo_delay", 120), 50, 300)
             };
             _trackEchoDelay.ValueChanged += (s, e) =>
             {

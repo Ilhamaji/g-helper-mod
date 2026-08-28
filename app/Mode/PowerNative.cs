@@ -106,16 +106,17 @@ namespace GHelper.Mode
 
         public static int GetCPUBoost()
         {
-            IntPtr AcValueIndex;
+            IntPtr AcValueIndex = IntPtr.Zero;
             Guid activeSchemeGuid = GetActiveScheme();
+            if (activeSchemeGuid == Guid.Empty) return -1;
 
             UInt32 value = PowerReadACValueIndex(IntPtr.Zero,
                  activeSchemeGuid,
                  GUID_CPU,
                  GUID_BOOST, out AcValueIndex);
 
-            return AcValueIndex.ToInt32();
-
+            if (value == 0) return AcValueIndex.ToInt32();
+            return -1;
         }
 
         public static void SetCPUBoost(int boost = 0)

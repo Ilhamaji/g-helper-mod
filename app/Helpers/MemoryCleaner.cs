@@ -173,10 +173,12 @@ namespace GHelper.Helpers
                     return false;
                 }
 
-                SetPrivilege(tokenHandle, SE_INCREASE_QUOTA_NAME, true);
-                SetPrivilege(tokenHandle, SE_PROFILE_SINGLE_PROCESS_NAME, true);
-                _privilegesEnabled = true;
-                return true;
+                bool q1 = SetPrivilege(tokenHandle, SE_INCREASE_QUOTA_NAME, true);
+                bool q2 = SetPrivilege(tokenHandle, SE_PROFILE_SINGLE_PROCESS_NAME, true);
+                _privilegesEnabled = q1 && q2;
+                if (!_privilegesEnabled)
+                    Logger.WriteLine("MemoryCleaner: Failed to enable memory privileges (SeIncreaseQuota / SeProfileSingleProcess)");
+                return _privilegesEnabled;
             }
             catch
             {
