@@ -94,6 +94,11 @@ namespace GHelper.Helpers
             }
         }
 
+        public static bool IsBoostManagedActive
+        {
+            get { lock (_stateLock) return _defaultBoostMode != -1; }
+        }
+
         public static bool IsAltTabProtectionEnabled
         {
             get => AppConfig.IsNotFalse("app_auto_boost_alt_tab_protection");

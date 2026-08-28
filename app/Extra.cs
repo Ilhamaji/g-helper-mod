@@ -584,12 +584,132 @@ namespace GHelper
             };
             buttonMicEq.Click += (s, e) => { using var f = new MicNoiseForm(); f.ShowDialog(this); };
 
+            // ── Idle Boost Guard ─────────────────────────────────────────────
+            RCheckBox checkIdleGuard = new RCheckBox
+            {
+                Text = "Idle Boost Guard",
+                Left = 405,
+                Top = 33,
+                AutoSize = true,
+                Checked = IdleBoostGuard.IsEnabled
+            };
+
+            Label labelGuardThreshold = new Label
+            {
+                Text = $"Idle CPU < {IdleBoostGuard.IdleUsageThreshold}%",
+                Left = 405,
+                Top = 60,
+                AutoSize = true
+            };
+
+            RTrackBar trackGuardThreshold = new RTrackBar
+            {
+                Left = 480,
+                Top = 54,
+                Width = 120,
+                Minimum = 1,
+                Maximum = 50,
+                Value = IdleBoostGuard.IdleUsageThreshold
+            };
+
+            Label labelGuardHold = new Label
+            {
+                Text = $"Hold {IdleBoostGuard.HoldSeconds}s",
+                Left = 405,
+                Top = 90,
+                AutoSize = true
+            };
+
+            RTrackBar trackGuardHold = new RTrackBar
+            {
+                Left = 480,
+                Top = 84,
+                Width = 120,
+                Minimum = 3,
+                Maximum = 60,
+                Value = IdleBoostGuard.HoldSeconds
+            };
+
+            Label labelGuardSafe = new Label
+            {
+                Text = "Safe mode",
+                Left = 405,
+                Top = 120,
+                AutoSize = true
+            };
+
+            int[] guardModeValues = { 0, 1, 3, 4, 5, 6 };
+            string[] guardModeNames =
+            {
+                "Disabled (0)",
+                "Enabled (1)",
+                "Efficient Enabled (3)",
+                "Efficient Aggressive (4)",
+                "Aggressive at Guaranteed (5)",
+                "Efficient Aggr. Gtd (6)"
+            };
+
+            RComboBox comboGuardSafeMode = new RComboBox
+            {
+                Left = 480,
+                Top = 113,
+                Width = 120,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            foreach (var name in guardModeNames) comboGuardSafeMode.Items.Add(name);
+            int safeIdx = Array.IndexOf(guardModeValues, IdleBoostGuard.SafeBoostMode);
+            comboGuardSafeMode.SelectedIndex = safeIdx >= 0 ? safeIdx : 2;
+
+            void SetGuardControls(bool enabled)
+            {
+                trackGuardThreshold.Enabled = enabled;
+                trackGuardHold.Enabled = enabled;
+                comboGuardSafeMode.Enabled = enabled;
+                labelGuardThreshold.ForeColor = enabled ? SystemColors.ControlText : SystemColors.GrayText;
+                labelGuardHold.ForeColor     = enabled ? SystemColors.ControlText : SystemColors.GrayText;
+                labelGuardSafe.ForeColor     = enabled ? SystemColors.ControlText : SystemColors.GrayText;
+            }
+
+            SetGuardControls(checkIdleGuard.Checked);
+
+            checkIdleGuard.CheckedChanged += (s, e) =>
+            {
+                IdleBoostGuard.IsEnabled = checkIdleGuard.Checked;
+                SetGuardControls(checkIdleGuard.Checked);
+            };
+
+            trackGuardThreshold.ValueChanged += (s, e) =>
+            {
+                AppConfig.Set("idle_boost_cpu_threshold", trackGuardThreshold.Value);
+                labelGuardThreshold.Text = $"Idle CPU < {trackGuardThreshold.Value}%";
+            };
+
+            trackGuardHold.ValueChanged += (s, e) =>
+            {
+                AppConfig.Set("idle_boost_hold_seconds", trackGuardHold.Value);
+                labelGuardHold.Text = $"Hold {trackGuardHold.Value}s";
+            };
+
+            comboGuardSafeMode.SelectedIndexChanged += (s, e) =>
+            {
+                if (comboGuardSafeMode.SelectedIndex >= 0)
+                    AppConfig.Set("idle_boost_safe_mode", guardModeValues[comboGuardSafeMode.SelectedIndex]);
+            };
+
+            // ── Add to panel ────────────────────────────────────────────────
             panelCustomFeatures.Controls.Add(labelHeader);
             panelCustomFeatures.Controls.Add(buttonAppBoost);
             panelCustomFeatures.Controls.Add(checkAntiFreeze);
             panelCustomFeatures.Controls.Add(buttonCleanRam);
             panelCustomFeatures.Controls.Add(checkAutoRam);
             panelCustomFeatures.Controls.Add(buttonMicEq);
+            panelCustomFeatures.Controls.Add(checkIdleGuard);
+            panelCustomFeatures.Controls.Add(labelGuardThreshold);
+            panelCustomFeatures.Controls.Add(trackGuardThreshold);
+            panelCustomFeatures.Controls.Add(labelGuardHold);
+            panelCustomFeatures.Controls.Add(trackGuardHold);
+            panelCustomFeatures.Controls.Add(labelGuardSafe);
+            panelCustomFeatures.Controls.Add(comboGuardSafeMode);
 
             Controls.Add(panelCustomFeatures);
         }

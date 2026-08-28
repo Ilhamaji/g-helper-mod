@@ -117,6 +117,8 @@ namespace GHelper.Overlay
         private static readonly Color DefaultCpuColor = OffWhiteTextColor;
         private static readonly SolidBrush _batBrush = new(OffWhiteTextColor);
         private static readonly SolidBrush _batDimBrush = new(Color.FromArgb(128, 140, 145, 155));
+        private static readonly SolidBrush _guardSafeBrush = new(Color.FromArgb(122, 205, 128));
+        private static readonly SolidBrush _boostWarnBrush = new(Color.FromArgb(235, 120, 115));
 
         // Minimum background alpha while dragging, so a near-transparent box stays grabbable
         // (a layered window ignores mouse hits on fully transparent pixels).
@@ -644,7 +646,13 @@ namespace GHelper.Overlay
             int currentY = padY;
 
             // Row 1: CPU
-            g.DrawString(cpuRowStr, font, _cpuBrush, new PointF(padX, currentY));
+            string cpuTag = $"[{boostTag}]";
+            string cpuRowPrefix = cpuRowStr.Length > cpuTag.Length
+                ? cpuRowStr.Substring(0, cpuRowStr.Length - cpuTag.Length)
+                : cpuRowStr;
+            float cpuPrefixW = g.MeasureString(cpuRowPrefix, font).Width;
+            g.DrawString(cpuRowPrefix, font, _cpuBrush, new PointF(padX, currentY));
+            g.DrawString(cpuTag, font, GetBoostBrush(), new PointF(padX + cpuPrefixW, currentY));
             currentY += lineH + lineGap;
 
             // Row 2: GPU
@@ -871,6 +879,13 @@ namespace GHelper.Overlay
             AppConfig.Set("overlay_anchor",   anchor);
             AppConfig.Set("overlay_offset_x", offsetX);
             AppConfig.Set("overlay_offset_y", offsetY);
+        }
+
+        private Brush GetBoostBrush()
+        {
+            if (Helpers.IdleBoostGuard.IsGuardActive) return _guardSafeBrush;
+            int mode = GHelper.Mode.PowerNative.GetCPUBoost();
+            return mode == 2 ? _boostWarnBrush : _cpuBrush;
         }
 
         private static Color ParseColor(string key, Color fallback)
