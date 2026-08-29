@@ -513,49 +513,123 @@ namespace GHelper
             Panel panelCustomFeatures = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 200,
+                Height = 525,
                 Padding = new Padding(10, 8, 10, 8)
             };
+
+            int left = 12;
+            int btnW = 185;
+            int btnH = 30;
+            int chkLeft = left + btnW + 22;
+            int chkW = 340;
+            int sectionGap = 28;
+            int y = 8;
 
             // ── Header ───────────────────────────────────────────────────────
             Label labelHeader = new Label
             {
                 Text = "CPU Boost Pro & Audio Enhancements",
-                Font = new Font(Font, FontStyle.Bold),
-                Top = 5,
-                Left = 10,
+                Font = new Font(Font.FontFamily, 10.5f, FontStyle.Bold),
+                Left = left,
+                Top = y,
                 AutoSize = true
             };
+            y += 30;
 
-            // ── Row 1: Boost controls ────────────────────────────────────────
+            // ── Section 1: App Boost ─────────────────────────────────────────
+            Label labelSection1 = new Label
+            {
+                Text = "App Performance Boost",
+                Font = new Font(Font, FontStyle.Bold),
+                Left = left,
+                Top = y,
+                AutoSize = true,
+                ForeColor = SystemColors.ControlDark
+            };
+            y += 24;
+
             RButton buttonAppBoost = new RButton
             {
                 Text = "Target App Auto Boost...",
-                Left = 10,
-                Top = 30,
-                Width = 175,
-                Height = 28
+                Left = left,
+                Top = y,
+                Width = btnW,
+                Height = btnH
             };
             buttonAppBoost.Click += (s, e) => { using var f = new AppAutoBoostForm(); f.ShowDialog(this); };
 
             RCheckBox checkAntiFreeze = new RCheckBox
             {
                 Text = "Anti-Freeze Protection",
-                Left = 195,
-                Top = 33,
+                Left = chkLeft,
+                Top = y + 3,
+                Width = chkW,
                 AutoSize = true,
                 Checked = CpuAntiFreezeManager.IsEnabled
             };
             checkAntiFreeze.CheckedChanged += (s, e) => { CpuAntiFreezeManager.IsEnabled = checkAntiFreeze.Checked; };
 
-            // ── Row 2: RAM controls ──────────────────────────────────────────
+            y += btnH + 10;
+
+            RButton buttonAffinity = new RButton
+            {
+                Text = "CPU Core Affinity...",
+                Left = left,
+                Top = y,
+                Width = btnW,
+                Height = btnH
+            };
+            buttonAffinity.Click += (s, e) => { using var f = new CpuAffinityForm(); f.ShowDialog(this); };
+
+            RButton buttonEcoQos = new RButton
+            {
+                Text = "EcoQoS Energy Saver...",
+                Left = left,
+                Top = y + btnH + 10,
+                Width = btnW,
+                Height = btnH
+            };
+            buttonEcoQos.Click += (s, e) => { using var f = new EcoQosForm(); f.ShowDialog(this); };
+
+            // Slot-style descriptors next to affinity/eco buttons.
+            Label labelAffinityHint = new Label
+            {
+                Text = "Bind games/apps to specific CPU cores (P / E / custom)",
+                Left = chkLeft,
+                Top = y + 4,
+                AutoSize = true,
+                ForeColor = SystemColors.GrayText
+            };
+            Label labelEcoHint = new Label
+            {
+                Text = "Reduce power & heat of background apps per-rule or globally",
+                Left = chkLeft,
+                Top = y + btnH + 14,
+                AutoSize = true,
+                ForeColor = SystemColors.GrayText
+            };
+
+            y += btnH * 2 + 20 + sectionGap;
+
+            // ── Section 2: Memory ────────────────────────────────────────────
+            Label labelSection2 = new Label
+            {
+                Text = "Memory",
+                Font = new Font(Font, FontStyle.Bold),
+                Left = left,
+                Top = y,
+                AutoSize = true,
+                ForeColor = SystemColors.ControlDark
+            };
+            y += 24;
+
             RButton buttonCleanRam = new RButton
             {
                 Text = "Clean Standby RAM",
-                Left = 10,
-                Top = 65,
-                Width = 175,
-                Height = 28
+                Left = left,
+                Top = y,
+                Width = btnW,
+                Height = btnH
             };
             buttonCleanRam.Click += (s, e) =>
             {
@@ -566,8 +640,9 @@ namespace GHelper
             RCheckBox checkAutoRam = new RCheckBox
             {
                 Text = "Auto Standby Memory Cleaner",
-                Left = 195,
-                Top = 68,
+                Left = chkLeft,
+                Top = y + 3,
+                Width = chkW,
                 AutoSize = true,
                 Checked = AppConfig.Is("auto_ram_cleaner_enabled")
             };
@@ -577,61 +652,79 @@ namespace GHelper
                 MemoryCleaner.SetAutoCleaner(checkAutoRam.Checked);
             };
 
-            // ── Row 3: Mic EQ ────────────────────────────────────────────────
+            y += btnH + 10 + sectionGap;
+
+            // ── Section 3: Audio ─────────────────────────────────────────────
+            Label labelSection3 = new Label
+            {
+                Text = "Audio",
+                Font = new Font(Font, FontStyle.Bold),
+                Left = left,
+                Top = y,
+                AutoSize = true,
+                ForeColor = SystemColors.ControlDark
+            };
+            y += 24;
+
             RButton buttonMicEq = new RButton
             {
                 Text = "Mic Noise EQ Settings...",
-                Left = 10,
-                Top = 100,
-                Width = 175,
-                Height = 28
+                Left = left,
+                Top = y,
+                Width = btnW,
+                Height = btnH
             };
             buttonMicEq.Click += (s, e) => { using var f = new MicNoiseForm(); f.ShowDialog(this); };
+
+            y += btnH + 10 + sectionGap;
 
             // ── Separator ────────────────────────────────────────────────────
             Label labelSep1 = new Label
             {
                 BorderStyle = BorderStyle.Fixed3D,
-                Left = 10,
-                Top = 138,
+                Left = left,
+                Top = y,
                 Width = 520,
                 Height = 2,
                 Anchor = AnchorStyles.Left | AnchorStyles.Right
             };
+            y += 14;
 
-            // ── Row 4-5: Idle Boost Guard ────────────────────────────────────
+            // ── Section 4: Idle Boost Guard ──────────────────────────────────
             Label labelGuardHeader = new Label
             {
                 Text = "Idle Boost Guard",
                 Font = new Font(Font, FontStyle.Bold),
-                Left = 10,
-                Top = 145,
+                Left = left,
+                Top = y,
                 AutoSize = true
             };
 
             RCheckBox checkIdleGuard = new RCheckBox
             {
                 Text = "Auto-lower CPU boost when idle to prevent freeze",
-                Left = 130,
-                Top = 144,
+                Left = chkLeft,
+                Top = y + 2,
+                Width = chkW,
                 AutoSize = true,
                 Checked = IdleBoostGuard.IsEnabled
             };
+            y += 30;
 
             Label labelGuardThreshold = new Label
             {
                 Text = $"CPU < {IdleBoostGuard.IdleUsageThreshold}%",
-                Left = 130,
-                Top = 168,
+                Left = chkLeft,
+                Top = y + 4,
                 AutoSize = true,
                 Width = 70
             };
 
             RTrackBar trackGuardThreshold = new RTrackBar
             {
-                Left = 200,
-                Top = 162,
-                Width = 120,
+                Left = chkLeft + 72,
+                Top = y,
+                Width = 140,
                 Minimum = 1,
                 Maximum = 50,
                 Value = IdleBoostGuard.IdleUsageThreshold
@@ -640,29 +733,31 @@ namespace GHelper
             Label labelGuardHold = new Label
             {
                 Text = $"Hold {IdleBoostGuard.HoldSeconds}s",
-                Left = 330,
-                Top = 168,
+                Left = chkLeft + 232,
+                Top = y + 4,
                 AutoSize = true,
                 Width = 65
             };
 
             RTrackBar trackGuardHold = new RTrackBar
             {
-                Left = 395,
-                Top = 162,
-                Width = 120,
+                Left = chkLeft + 300,
+                Top = y,
+                Width = 140,
                 Minimum = 3,
                 Maximum = 60,
                 Value = IdleBoostGuard.HoldSeconds
             };
 
+            y += 28;
+
             Label labelGuardSafe = new Label
             {
                 Text = "Safe mode",
-                Left = 130,
-                Top = 190,
+                Left = chkLeft,
+                Top = y + 4,
                 AutoSize = true,
-                Width = 65
+                Width = 70
             };
 
             int[] guardModeValues = { 0, 1, 3, 4, 5, 6 };
@@ -678,9 +773,9 @@ namespace GHelper
 
             RComboBox comboGuardSafeMode = new RComboBox
             {
-                Left = 200,
-                Top = 187,
-                Width = 180,
+                Left = chkLeft + 72,
+                Top = y,
+                Width = 230,
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
             foreach (var name in guardModeNames) comboGuardSafeMode.Items.Add(name);
@@ -725,10 +820,17 @@ namespace GHelper
 
             // ── Add to panel ────────────────────────────────────────────────
             panelCustomFeatures.Controls.Add(labelHeader);
+            panelCustomFeatures.Controls.Add(labelSection1);
             panelCustomFeatures.Controls.Add(buttonAppBoost);
             panelCustomFeatures.Controls.Add(checkAntiFreeze);
+            panelCustomFeatures.Controls.Add(buttonAffinity);
+            panelCustomFeatures.Controls.Add(buttonEcoQos);
+            panelCustomFeatures.Controls.Add(labelAffinityHint);
+            panelCustomFeatures.Controls.Add(labelEcoHint);
+            panelCustomFeatures.Controls.Add(labelSection2);
             panelCustomFeatures.Controls.Add(buttonCleanRam);
             panelCustomFeatures.Controls.Add(checkAutoRam);
+            panelCustomFeatures.Controls.Add(labelSection3);
             panelCustomFeatures.Controls.Add(buttonMicEq);
             panelCustomFeatures.Controls.Add(labelSep1);
             panelCustomFeatures.Controls.Add(labelGuardHeader);
