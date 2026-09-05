@@ -100,6 +100,8 @@ namespace GHelper
             buttonUpdates.Visible = false;
             buttonDonate.Text = Properties.Strings.Donate;
 
+            InitOverlayButton();
+
             buttonController.Text = Properties.Strings.Controller;
             labelAlly.Text = Properties.Strings.AllyController;
 
@@ -541,6 +543,117 @@ namespace GHelper
             ToggleOverlay();
         }
 
+        private void InitOverlayButton()
+        {
+            buttonOverlay.Text = Properties.Strings.Overlay;
+            buttonOverlay.AccessibleName = Properties.Strings.Overlay;
+            buttonOverlay.Activated = AppConfig.IsOverlay();
+            buttonOverlay.BorderColor = colorStandard;
+
+            if (!AppConfig.IsAlly())
+            {
+                tableAMD.Controls.Remove(buttonOverlay);
+
+                tableButtons.SuspendLayout();
+                tableButtons.Controls.Clear();
+
+                tableButtons.ColumnCount = 3;
+                tableButtons.ColumnStyles.Clear();
+                tableButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33333F));
+                tableButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33333F));
+                tableButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33333F));
+
+                buttonOverlay.Dock = DockStyle.Top;
+                buttonOverlay.Size = buttonDonate.Size;
+                buttonOverlay.BorderRadius = buttonDonate.BorderRadius;
+                buttonOverlay.Secondary = true;
+                buttonOverlay.BackColor = buttonDonate.BackColor;
+                buttonOverlay.ForeColor = buttonDonate.ForeColor;
+                buttonOverlay.FlatAppearance.BorderColor = buttonDonate.FlatAppearance.BorderColor;
+                buttonOverlay.Margin = buttonDonate.Margin;
+                buttonOverlay.Font = buttonDonate.Font;
+
+                tableButtons.Controls.Add(buttonOverlay, 0, 0);
+                tableButtons.Controls.Add(buttonDonate, 1, 0);
+                tableButtons.Controls.Add(buttonQuit, 2, 0);
+
+                tableButtons.ResumeLayout(true);
+            }
+
+            buttonOverlay.Visible = true;
+            InitOverlayContextMenu();
+
+            try
+            {
+                ToolTip overlayToolTip = new ToolTip();
+                overlayToolTip.SetToolTip(buttonOverlay, Properties.Strings.Overlay + " (Alt+O)\r\n" + Properties.Strings.OverlayOnlyInGames);
+            }
+            catch { }
+        }
+
+        private void InitOverlayContextMenu()
+        {
+            CustomContextMenu overlayMenu = new CustomContextMenu();
+            overlayMenu.Renderer = new CustomMenuRenderer();
+
+            var menuGameOnly = new ToolStripMenuItem(Properties.Strings.OverlayOnlyInGames);
+            menuGameOnly.Checked = AppConfig.IsOverlayGameOnly();
+            menuGameOnly.Click += (s, e) => ToggleOverlayGameOnly();
+
+            var menuModeHeader = new ToolStripMenuItem("Overlay Mode");
+            string[] modes = { "Default", "Light", "Full", "Complete" };
+            int currentMode = AppConfig.Exists("overlay_mode") ? AppConfig.Get("overlay_mode", 0) : AppConfig.Get("overlay_light_mode", 0);
+            for (int i = 0; i < modes.Length; i++)
+            {
+                int m = i;
+                var modeItem = new ToolStripMenuItem(modes[m]);
+                modeItem.Checked = (currentMode == m);
+                modeItem.Click += (s, e) =>
+                {
+                    AppConfig.Set("overlay_mode", m);
+                    if (AppConfig.IsOverlay())
+                    {
+                        Program.hardwareOverlay?.StopOverlay();
+                        Program.hardwareOverlay?.StartOverlay();
+                    }
+                };
+                menuModeHeader.DropDownItems.Add(modeItem);
+            }
+
+            var menuResetPos = new ToolStripMenuItem("Reset Position");
+            menuResetPos.Click += (s, e) =>
+            {
+                AppConfig.Remove("overlay_anchor");
+                AppConfig.Remove("overlay_offset_x");
+                AppConfig.Remove("overlay_offset_y");
+                if (AppConfig.IsOverlay())
+                {
+                    Program.hardwareOverlay?.StopOverlay();
+                    Program.hardwareOverlay?.StartOverlay();
+                }
+            };
+
+            overlayMenu.Items.Add(menuGameOnly);
+            overlayMenu.Items.Add(new ToolStripSeparator());
+            overlayMenu.Items.Add(menuModeHeader);
+            overlayMenu.Items.Add(menuResetPos);
+
+            overlayMenu.Opening += (s, e) =>
+            {
+                menuGameOnly.Checked = AppConfig.IsOverlayGameOnly();
+                int cur = AppConfig.Exists("overlay_mode") ? AppConfig.Get("overlay_mode", 0) : AppConfig.Get("overlay_light_mode", 0);
+                for (int i = 0; i < menuModeHeader.DropDownItems.Count; i++)
+                {
+                    if (menuModeHeader.DropDownItems[i] is ToolStripMenuItem item)
+                        item.Checked = (i == cur);
+                }
+                overlayMenu.BackColor = this.BackColor;
+                overlayMenu.ForeColor = this.ForeColor;
+            };
+
+            buttonOverlay.ContextMenuStrip = overlayMenu;
+        }
+
         private void ButtonHandheld_Click(object? sender, EventArgs e)
         {
             if (handheldForm == null || handheldForm.Text == "")
@@ -701,6 +814,7 @@ namespace GHelper
             sensorTimer.Enabled = this.Visible || sensorsAlways;
             if (this.Visible)
             {
+                buttonOverlay.Activated = AppConfig.IsOverlay();
                 Task.Run((Action)RefreshPeripheralsBattery);
             }
         }
@@ -1684,6 +1798,12 @@ namespace GHelper
 
         public void ToggleOverlay(bool fromHotkey = false)
         {
+            if (InvokeRequired)
+            {
+                Invoke(() => ToggleOverlay(fromHotkey));
+                return;
+            }
+
             bool enable = !AppConfig.IsOverlay();
             AppConfig.Set("overlay", enable ? 1 : 0);
             Logger.WriteLine("Overlay " + (enable ? "On" : "Off") + (AppConfig.IsOverlayGameOnly() ? " (game only)" : ""));
@@ -1702,6 +1822,12 @@ namespace GHelper
 
         public void ToggleOverlayGameOnly()
         {
+            if (InvokeRequired)
+            {
+                Invoke(ToggleOverlayGameOnly);
+                return;
+            }
+
             AppConfig.Set("overlay_game_only", AppConfig.IsOverlayGameOnly() ? 0 : 1);
             if (AppConfig.IsOverlay())
             {
