@@ -244,7 +244,30 @@ namespace GHelper.Helpers
                 _monitorTimer?.Dispose();
                 _monitorTimer = null;
             }
+            RestoreAllApplied();
             Logger.WriteLine("EcoQosManager stopped.");
+        }
+
+        public static void RestoreAllApplied()
+        {
+            List<EcoQosRule> rules;
+            lock (_ruleLock) rules = new List<EcoQosRule>(_rules);
+
+            foreach (var rule in rules)
+            {
+                if (string.IsNullOrWhiteSpace(rule.ProcessName)) continue;
+                ApplyToProcess(rule.ProcessName, false);
+            }
+
+            lock (_stateLock)
+            {
+                foreach (var p in _globalProcesses)
+                {
+                    if (!string.IsNullOrWhiteSpace(p))
+                        ApplyToProcess(p, false);
+                }
+            }
+            Logger.WriteLine("EcoQosManager: Restored all processes to normal QoS (EcoQoS OFF)");
         }
 
         /// <summary>Set EcoQoS (efficient throttling) for a process by pid.</summary>

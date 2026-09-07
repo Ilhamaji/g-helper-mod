@@ -98,15 +98,26 @@ namespace GHelper.Helpers
             }
             else
             {
-                if (_isAntiFreezeActive)
-                {
-                    StopKeepAlivePulse();
-                    SetMinimumProcessorState(_originalMinState);
-                    SetPcieLinkStatePowerManagement(_originalPcieState);
-                    _isAntiFreezeActive = false;
-                    Logger.WriteLine("CpuAntiFreeze deactivated (Restored original settings)");
-                }
+                StopKeepAlivePulse();
+                uint restoreMin = (_originalMinState > 0 && _originalMinState <= 100) ? _originalMinState : 5;
+                _lastAppliedMinState = 999;
+                _lastAppliedPcieState = 999;
+                SetMinimumProcessorState(restoreMin);
+                SetPcieLinkStatePowerManagement(_originalPcieState);
+                _isAntiFreezeActive = false;
+                Logger.WriteLine($"CpuAntiFreeze deactivated (Restored Processor Min State: {restoreMin}%, PCIe ASPM: {_originalPcieState})");
             }
+        }
+
+        public static void ResetToCleanDefaults()
+        {
+            StopKeepAlivePulse();
+            _lastAppliedMinState = 999;
+            _lastAppliedPcieState = 999;
+            SetMinimumProcessorState(5); // Windows default 5%
+            SetPcieLinkStatePowerManagement(0);
+            _isAntiFreezeActive = false;
+            Logger.WriteLine("CpuAntiFreeze: Reset to clean system defaults (Min State: 5%, Pulse stopped).");
         }
 
         public static Guid GetActiveScheme()

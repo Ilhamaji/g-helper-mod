@@ -317,7 +317,7 @@ namespace GHelper.Helpers
             return ApplyAffinityToProcess(processName, ResolveMask(rule));
         }
 
-        private static void RestoreAllApplied()
+        public static void RestoreAllApplied()
         {
             Dictionary<int, int> copy;
             lock (_stateLock)

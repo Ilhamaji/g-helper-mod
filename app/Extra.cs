@@ -510,140 +510,186 @@ namespace GHelper
 
         private void InitCpuBoostProFeatures()
         {
-            Panel panelCustomFeatures = new Panel
+            // ── Root panel (top-docked, auto-sizing so it expands with content) ─
+            Panel panelRoot = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 525,
-                Padding = new Padding(10, 8, 10, 8)
-            };
-
-            int left = 12;
-            int btnW = 185;
-            int btnH = 30;
-            int chkLeft = left + btnW + 22;
-            int chkW = 340;
-            int sectionGap = 28;
-            int y = 8;
-
-            // ── Header ───────────────────────────────────────────────────────
-            Label labelHeader = new Label
-            {
-                Text = "CPU Boost Pro & Audio Enhancements",
-                Font = new Font(Font.FontFamily, 10.5f, FontStyle.Bold),
-                Left = left,
-                Top = y,
-                AutoSize = true
-            };
-            y += 30;
-
-            // ── Section 1: App Boost ─────────────────────────────────────────
-            Label labelSection1 = new Label
-            {
-                Text = "App Performance Boost",
-                Font = new Font(Font, FontStyle.Bold),
-                Left = left,
-                Top = y,
                 AutoSize = true,
-                ForeColor = SystemColors.ControlDark
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Padding = new Padding(12, 10, 12, 12)
             };
-            y += 24;
 
-            RButton buttonAppBoost = new RButton
+            // ─── Helper: section header label ────────────────────────────────────
+            static Label MakeSectionLabel(string text)
             {
-                Text = "Target App Auto Boost...",
-                Left = left,
-                Top = y,
-                Width = btnW,
-                Height = btnH
+                return new Label
+                {
+                    Text = text,
+                    Dock = DockStyle.Top,
+                    AutoSize = false,
+                    Height = 26,
+                    Font = new Font(SystemFonts.DefaultFont, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(0, 120, 212),  // accent blue
+                    Padding = new Padding(0, 4, 0, 0),
+                    Margin = new Padding(0),
+                    TextAlign = ContentAlignment.MiddleLeft
+                };
+            }
+
+            // ─── Helper: thin horizontal divider ─────────────────────────────────
+            static Panel MakeDivider()
+            {
+                return new Panel
+                {
+                    Dock = DockStyle.Top,
+                    Height = 1,
+                    BackColor = Color.FromArgb(60, 60, 60),
+                    Margin = new Padding(0, 4, 0, 8)
+                };
+            }
+
+            // ─── Helper: hint label ───────────────────────────────────────────────
+            static Label MakeHint(string text)
+            {
+                return new Label
+                {
+                    Text = text,
+                    AutoSize = true,
+                    ForeColor = SystemColors.GrayText,
+                    Font = new Font(SystemFonts.DefaultFont.FontFamily, 7.5f),
+                    Margin = new Padding(0, 2, 0, 2)
+                };
+            }
+
+            // ─────────────────────────────────────────────────────────────────────
+            //  HEADER ROW  ──  "CPU Boost Pro & Audio Enhancements"  +  [Reset All]
+            // ─────────────────────────────────────────────────────────────────────
+            Panel panelHeader = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 38,
+                Margin = new Padding(0, 0, 0, 6)
             };
+
+            Label labelMainTitle = new Label
+            {
+                Text = "⚡  CPU Boost Pro & Audio Enhancements",
+                Font = new Font(SystemFonts.DefaultFont.FontFamily, 10.5f, FontStyle.Bold),
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            RButton buttonResetAll = new RButton
+            {
+                Text = "↺  Reset All to Defaults",
+                Dock = DockStyle.Right,
+                Width = 175,
+                Height = 30,
+                Secondary = true
+            };
+            var toolTipReset = new ToolTip();
+            toolTipReset.SetToolTip(buttonResetAll,
+                "Immediately restores: CPU Boost to profile default, Discord priority to Normal, " +
+                "Processor Min-State to 5%, EcoQoS OFF, CPU Affinity to All Cores, Mic EQ disabled.");
+            buttonResetAll.Click += (s, e) =>
+            {
+                string report = ModFeatureResetHelper.RestoreAllToSystemDefaults();
+                MessageBox.Show(this, report, "Restore System Defaults", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            };
+
+            panelHeader.Controls.Add(labelMainTitle);
+            panelHeader.Controls.Add(buttonResetAll);
+
+            // ─────────────────────────────────────────────────────────────────────
+            //  TABLE  ──  main 2-column layout for buttons (left) + options (right)
+            // ─────────────────────────────────────────────────────────────────────
+            TableLayoutPanel table = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 2,
+                RowCount = 0,
+                Padding = new Padding(0),
+                Margin = new Padding(0),
+                CellBorderStyle = TableLayoutPanelCellBorderStyle.None,
+            };
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 195));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
+            int row = 0;
+
+            // ── addRow helpers ────────────────────────────────────────────────────
+            void AddRow(Control left, Control right, int paddingBottom = 6)
+            {
+                table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                left.Margin  = new Padding(0, 0, 8, paddingBottom);
+                right.Margin = new Padding(0, 4, 0, paddingBottom);
+                table.Controls.Add(left,  0, row);
+                table.Controls.Add(right, 1, row);
+                row++;
+            }
+
+            void AddFullRow(Control ctrl, int paddingBottom = 4)
+            {
+                table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                ctrl.Margin = new Padding(0, 0, 0, paddingBottom);
+                table.Controls.Add(ctrl, 0, row);
+                table.SetColumnSpan(ctrl, 2);
+                row++;
+            }
+
+            // ─────────────────────────────────────────────────────────────────────
+            //  SECTION 1 ── App Performance Boost
+            // ─────────────────────────────────────────────────────────────────────
+            AddFullRow(MakeSectionLabel("▸  App Performance Boost"), 2);
+
+            // Row: Target App Auto Boost | Anti-Freeze checkbox
+            RButton buttonAppBoost = new RButton { Text = "Target App Auto Boost…", Dock = DockStyle.Fill, Height = 30 };
             buttonAppBoost.Click += (s, e) => { using var f = new AppAutoBoostForm(); f.ShowDialog(this); };
 
+            var panelAntiFreezeCol = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
             RCheckBox checkAntiFreeze = new RCheckBox
             {
                 Text = "Anti-Freeze Protection",
-                Left = chkLeft,
-                Top = y + 3,
-                Width = chkW,
                 AutoSize = true,
+                Margin = new Padding(0),
                 Checked = CpuAntiFreezeManager.IsEnabled
             };
             checkAntiFreeze.CheckedChanged += (s, e) => { CpuAntiFreezeManager.IsEnabled = checkAntiFreeze.Checked; };
+            panelAntiFreezeCol.Controls.Add(checkAntiFreeze);
+            panelAntiFreezeCol.Controls.Add(MakeHint("Raise CPU min-state floor & keep-alive pulse to prevent idle freeze"));
+            AddRow(buttonAppBoost, panelAntiFreezeCol, 4);
 
-            y += btnH + 10;
-
-            RButton buttonAffinity = new RButton
-            {
-                Text = "CPU Core Affinity...",
-                Left = left,
-                Top = y,
-                Width = btnW,
-                Height = btnH
-            };
+            // Row: CPU Core Affinity | hint
+            RButton buttonAffinity = new RButton { Text = "CPU Core Affinity…", Dock = DockStyle.Fill, Height = 30 };
             buttonAffinity.Click += (s, e) => { using var f = new CpuAffinityForm(); f.ShowDialog(this); };
+            AddRow(buttonAffinity, MakeHint("Bind games/apps to specific CPU cores (P-cores / E-cores / custom)"), 4);
 
-            RButton buttonEcoQos = new RButton
-            {
-                Text = "EcoQoS Energy Saver...",
-                Left = left,
-                Top = y + btnH + 10,
-                Width = btnW,
-                Height = btnH
-            };
+            // Row: EcoQoS Energy Saver | hint
+            RButton buttonEcoQos = new RButton { Text = "EcoQoS Energy Saver…", Dock = DockStyle.Fill, Height = 30 };
             buttonEcoQos.Click += (s, e) => { using var f = new EcoQosForm(); f.ShowDialog(this); };
+            AddRow(buttonEcoQos, MakeHint("Reduce power & heat of background apps — per-rule or globally"), 8);
 
-            // Slot-style descriptors next to affinity/eco buttons.
-            Label labelAffinityHint = new Label
-            {
-                Text = "Bind games/apps to specific CPU cores (P / E / custom)",
-                Left = chkLeft,
-                Top = y + 4,
-                AutoSize = true,
-                ForeColor = SystemColors.GrayText
-            };
-            Label labelEcoHint = new Label
-            {
-                Text = "Reduce power & heat of background apps per-rule or globally",
-                Left = chkLeft,
-                Top = y + btnH + 14,
-                AutoSize = true,
-                ForeColor = SystemColors.GrayText
-            };
+            // ─────────────────────────────────────────────────────────────────────
+            //  SECTION 2 ── Standby Memory
+            // ─────────────────────────────────────────────────────────────────────
+            AddFullRow(MakeDivider(), 2);
+            AddFullRow(MakeSectionLabel("▸  Standby Memory"), 2);
 
-            y += btnH * 2 + 20 + sectionGap;
-
-            // ── Section 2: Memory ────────────────────────────────────────────
-            Label labelSection2 = new Label
-            {
-                Text = "Memory",
-                Font = new Font(Font, FontStyle.Bold),
-                Left = left,
-                Top = y,
-                AutoSize = true,
-                ForeColor = SystemColors.ControlDark
-            };
-            y += 24;
-
-            RButton buttonCleanRam = new RButton
-            {
-                Text = "Clean Standby RAM",
-                Left = left,
-                Top = y,
-                Width = btnW,
-                Height = btnH
-            };
+            RButton buttonCleanRam = new RButton { Text = "Clean Standby RAM Now", Dock = DockStyle.Fill, Height = 30 };
             buttonCleanRam.Click += (s, e) =>
             {
                 long freed = MemoryCleaner.CleanMemory();
-                MessageBox.Show(this, $"Memory cleaned successfully!\nFreed: {freed / (1024 * 1024)} MB", "Standby RAM Cleaner", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, $"Memory cleaned!\nFreed: {freed / (1024 * 1024)} MB", "Standby RAM Cleaner", MessageBoxButtons.OK, MessageBoxIcon.Information);
             };
 
+            var panelRamCol = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
             RCheckBox checkAutoRam = new RCheckBox
             {
-                Text = "Auto Standby Memory Cleaner",
-                Left = chkLeft,
-                Top = y + 3,
-                Width = chkW,
+                Text = "Auto Standby Cleaner (every 15 min)",
                 AutoSize = true,
+                Margin = new Padding(0),
                 Checked = AppConfig.Is("auto_ram_cleaner_enabled")
             };
             checkAutoRam.CheckedChanged += (s, e) =>
@@ -651,145 +697,128 @@ namespace GHelper
                 AppConfig.Set("auto_ram_cleaner_enabled", checkAutoRam.Checked ? 1 : 0);
                 MemoryCleaner.SetAutoCleaner(checkAutoRam.Checked);
             };
+            panelRamCol.Controls.Add(checkAutoRam);
+            panelRamCol.Controls.Add(MakeHint("Reclaims idle standby RAM to reduce game load times"));
+            AddRow(buttonCleanRam, panelRamCol, 8);
 
-            y += btnH + 10 + sectionGap;
+            // ─────────────────────────────────────────────────────────────────────
+            //  SECTION 3 ── Audio & AI Noise Suppression
+            // ─────────────────────────────────────────────────────────────────────
+            AddFullRow(MakeDivider(), 2);
+            AddFullRow(MakeSectionLabel("▸  Audio & AI Noise Suppression"), 2);
 
-            // ── Section 3: Audio ─────────────────────────────────────────────
-            Label labelSection3 = new Label
-            {
-                Text = "Audio",
-                Font = new Font(Font, FontStyle.Bold),
-                Left = left,
-                Top = y,
-                AutoSize = true,
-                ForeColor = SystemColors.ControlDark
-            };
-            y += 24;
-
-            RButton buttonMicEq = new RButton
-            {
-                Text = "Mic Noise EQ Settings...",
-                Left = left,
-                Top = y,
-                Width = btnW,
-                Height = btnH
-            };
+            RButton buttonMicEq = new RButton { Text = "🎙  Mic Noise EQ Settings…", Dock = DockStyle.Fill, Height = 30 };
             buttonMicEq.Click += (s, e) => { using var f = new MicNoiseForm(); f.ShowDialog(this); };
 
-            y += btnH + 10 + sectionGap;
+            var panelMicCol = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
 
-            // ── Separator ────────────────────────────────────────────────────
-            Label labelSep1 = new Label
-            {
-                BorderStyle = BorderStyle.Fixed3D,
-                Left = left,
-                Top = y,
-                Width = 520,
-                Height = 2,
-                Anchor = AnchorStyles.Left | AnchorStyles.Right
-            };
-            y += 14;
+            bool apoInstalled = GHelper.Helpers.MicNoiseManager.IsApoInstalled();
+            bool micEnabled   = AppConfig.Is("mic_noise_enabled");
 
-            // ── Section 4: Idle Boost Guard ──────────────────────────────────
-            Label labelGuardHeader = new Label
+            RCheckBox checkMicNoise = new RCheckBox
             {
-                Text = "Idle Boost Guard",
-                Font = new Font(Font, FontStyle.Bold),
-                Left = left,
-                Top = y,
-                AutoSize = true
+                Text = "Enable Mic AI Noise Reduction (EQ APO)",
+                AutoSize = true,
+                Margin = new Padding(0),
+                Enabled = apoInstalled,
+                Checked = micEnabled && apoInstalled
             };
 
+            Label labelMicStatus = new Label
+            {
+                AutoSize = true,
+                Margin = new Padding(0, 1, 0, 0),
+                Font = new Font(SystemFonts.DefaultFont.FontFamily, 7.5f),
+                ForeColor = apoInstalled
+                    ? (micEnabled ? Color.FromArgb(6, 180, 138) : SystemColors.GrayText)
+                    : Color.OrangeRed,
+                Text = apoInstalled
+                    ? (micEnabled ? "● Active — EQ APO detected" : "○ Equalizer APO detected, currently off")
+                    : "⚠ Equalizer APO not installed — feature unavailable"
+            };
+
+            checkMicNoise.CheckedChanged += (s, e) =>
+            {
+                AppConfig.Set("mic_noise_enabled", checkMicNoise.Checked ? 1 : 0);
+                string result = GHelper.Helpers.MicNoiseManager.ApplyMicConfig();
+                bool on = checkMicNoise.Checked;
+                labelMicStatus.Text = on ? "● Active — config written" : "○ Disabled — mic restored to raw";
+                labelMicStatus.ForeColor = on ? Color.FromArgb(6, 180, 138) : SystemColors.GrayText;
+            };
+
+            panelMicCol.Controls.Add(checkMicNoise);
+            panelMicCol.Controls.Add(labelMicStatus);
+            AddRow(buttonMicEq, panelMicCol, 8);
+
+            // ─────────────────────────────────────────────────────────────────────
+            //  SECTION 4 ── Idle Boost Guard
+            // ─────────────────────────────────────────────────────────────────────
+            AddFullRow(MakeDivider(), 2);
+            AddFullRow(MakeSectionLabel("▸  Idle Boost Guard"), 2);
+
+            // Enable toggle row
+            var panelGuardToggle = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
             RCheckBox checkIdleGuard = new RCheckBox
             {
-                Text = "Auto-lower CPU boost when idle to prevent freeze",
-                Left = chkLeft,
-                Top = y + 2,
-                Width = chkW,
+                Text = "Auto-lower CPU Boost when idle (prevents idle freeze/spike)",
                 AutoSize = true,
+                Margin = new Padding(0),
                 Checked = IdleBoostGuard.IsEnabled
             };
-            y += 30;
+            panelGuardToggle.Controls.Add(checkIdleGuard);
+            panelGuardToggle.Controls.Add(MakeHint("Safely reduces CPU boost mode after sustained idle period, restored on activity"));
+            AddFullRow(panelGuardToggle, 6);
 
-            Label labelGuardThreshold = new Label
-            {
-                Text = $"CPU < {IdleBoostGuard.IdleUsageThreshold}%",
-                Left = chkLeft,
-                Top = y + 4,
-                AutoSize = true,
-                Width = 70
-            };
+            // Sub-controls row: threshold + hold + safe mode
+            Panel panelGuardSubs = new Panel { Dock = DockStyle.Top, Height = 58, Padding = new Padding(0) };
 
+            Label labelGuardThreshold = new Label { Text = $"CPU < {IdleBoostGuard.IdleUsageThreshold}%", Left = 0, Top = 6, AutoSize = true };
             RTrackBar trackGuardThreshold = new RTrackBar
             {
-                Left = chkLeft + 72,
-                Top = y,
-                Width = 140,
-                Minimum = 1,
-                Maximum = 50,
+                Left = 68, Top = 2, Width = 130,
+                Minimum = 1, Maximum = 50,
                 Value = IdleBoostGuard.IdleUsageThreshold
             };
 
-            Label labelGuardHold = new Label
-            {
-                Text = $"Hold {IdleBoostGuard.HoldSeconds}s",
-                Left = chkLeft + 232,
-                Top = y + 4,
-                AutoSize = true,
-                Width = 65
-            };
-
+            Label labelGuardHold = new Label { Text = $"Hold {IdleBoostGuard.HoldSeconds}s", Left = 216, Top = 6, AutoSize = true };
             RTrackBar trackGuardHold = new RTrackBar
             {
-                Left = chkLeft + 300,
-                Top = y,
-                Width = 140,
-                Minimum = 3,
-                Maximum = 60,
+                Left = 266, Top = 2, Width = 120,
+                Minimum = 3, Maximum = 60,
                 Value = IdleBoostGuard.HoldSeconds
             };
 
-            y += 28;
-
-            Label labelGuardSafe = new Label
-            {
-                Text = "Safe mode",
-                Left = chkLeft,
-                Top = y + 4,
-                AutoSize = true,
-                Width = 70
-            };
+            Label labelGuardSafe = new Label { Text = "Safe boost:", Left = 0, Top = 38, AutoSize = true };
 
             int[] guardModeValues = { 0, 1, 3, 4, 5, 6 };
-            string[] guardModeNames =
-            {
-                "Disabled",
-                "Enabled",
-                "Efficient Enabled",
-                "Efficient Aggressive",
-                "Aggressive at Guaranteed",
-                "Efficient Aggr. Gtd"
-            };
+            string[] guardModeNames = { "Disabled", "Enabled", "Efficient Enabled", "Efficient Aggressive", "Aggressive at Gtd", "Efficient Aggr. Gtd" };
 
             RComboBox comboGuardSafeMode = new RComboBox
             {
-                Left = chkLeft + 72,
-                Top = y,
-                Width = 230,
+                Left = 68, Top = 34, Width = 240,
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
-            foreach (var name in guardModeNames) comboGuardSafeMode.Items.Add(name);
+            foreach (var n in guardModeNames) comboGuardSafeMode.Items.Add(n);
             int safeIdx = Array.IndexOf(guardModeValues, IdleBoostGuard.SafeBoostMode);
             comboGuardSafeMode.SelectedIndex = safeIdx >= 0 ? safeIdx : 2;
 
+            panelGuardSubs.Controls.AddRange(new Control[] {
+                labelGuardThreshold, trackGuardThreshold,
+                labelGuardHold, trackGuardHold,
+                labelGuardSafe, comboGuardSafeMode
+            });
+            AddFullRow(panelGuardSubs, 4);
+
+            // ── Wire up guard events ──────────────────────────────────────────────
             void SetGuardControls(bool enabled)
             {
                 trackGuardThreshold.Enabled = enabled;
-                trackGuardHold.Enabled = enabled;
-                comboGuardSafeMode.Enabled = enabled;
-                labelGuardThreshold.ForeColor = enabled ? SystemColors.ControlText : SystemColors.GrayText;
-                labelGuardHold.ForeColor     = enabled ? SystemColors.ControlText : SystemColors.GrayText;
-                labelGuardSafe.ForeColor     = enabled ? SystemColors.ControlText : SystemColors.GrayText;
+                trackGuardHold.Enabled      = enabled;
+                comboGuardSafeMode.Enabled  = enabled;
+                Color fc = enabled ? SystemColors.ControlText : SystemColors.GrayText;
+                labelGuardThreshold.ForeColor = fc;
+                labelGuardHold.ForeColor      = fc;
+                labelGuardSafe.ForeColor      = fc;
             }
 
             SetGuardControls(checkIdleGuard.Checked);
@@ -799,51 +828,30 @@ namespace GHelper
                 IdleBoostGuard.IsEnabled = checkIdleGuard.Checked;
                 SetGuardControls(checkIdleGuard.Checked);
             };
-
             trackGuardThreshold.ValueChanged += (s, e) =>
             {
                 AppConfig.Set("idle_boost_cpu_threshold", trackGuardThreshold.Value);
                 labelGuardThreshold.Text = $"CPU < {trackGuardThreshold.Value}%";
             };
-
             trackGuardHold.ValueChanged += (s, e) =>
             {
                 AppConfig.Set("idle_boost_hold_seconds", trackGuardHold.Value);
                 labelGuardHold.Text = $"Hold {trackGuardHold.Value}s";
             };
-
             comboGuardSafeMode.SelectedIndexChanged += (s, e) =>
             {
                 if (comboGuardSafeMode.SelectedIndex >= 0)
                     AppConfig.Set("idle_boost_safe_mode", guardModeValues[comboGuardSafeMode.SelectedIndex]);
             };
 
-            // ── Add to panel ────────────────────────────────────────────────
-            panelCustomFeatures.Controls.Add(labelHeader);
-            panelCustomFeatures.Controls.Add(labelSection1);
-            panelCustomFeatures.Controls.Add(buttonAppBoost);
-            panelCustomFeatures.Controls.Add(checkAntiFreeze);
-            panelCustomFeatures.Controls.Add(buttonAffinity);
-            panelCustomFeatures.Controls.Add(buttonEcoQos);
-            panelCustomFeatures.Controls.Add(labelAffinityHint);
-            panelCustomFeatures.Controls.Add(labelEcoHint);
-            panelCustomFeatures.Controls.Add(labelSection2);
-            panelCustomFeatures.Controls.Add(buttonCleanRam);
-            panelCustomFeatures.Controls.Add(checkAutoRam);
-            panelCustomFeatures.Controls.Add(labelSection3);
-            panelCustomFeatures.Controls.Add(buttonMicEq);
-            panelCustomFeatures.Controls.Add(labelSep1);
-            panelCustomFeatures.Controls.Add(labelGuardHeader);
-            panelCustomFeatures.Controls.Add(checkIdleGuard);
-            panelCustomFeatures.Controls.Add(labelGuardThreshold);
-            panelCustomFeatures.Controls.Add(trackGuardThreshold);
-            panelCustomFeatures.Controls.Add(labelGuardHold);
-            panelCustomFeatures.Controls.Add(trackGuardHold);
-            panelCustomFeatures.Controls.Add(labelGuardSafe);
-            panelCustomFeatures.Controls.Add(comboGuardSafeMode);
+            // ── Assemble root panel ───────────────────────────────────────────────
+            // Controls added in reverse draw order (last added = drawn first / bottom)
+            panelRoot.Controls.Add(table);
+            panelRoot.Controls.Add(panelHeader);
 
-            Controls.Add(panelCustomFeatures);
+            Controls.Add(panelRoot);
         }
+
 
         private void CheckKeystoneSoundCheckedChanged(object? sender, EventArgs e)
         {

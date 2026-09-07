@@ -103,6 +103,11 @@ namespace GHelper.Helpers
                 PowerNative.SetCPUBoost(_savedBoost);
                 Logger.WriteLine($"IdleBoostGuard restored CPU Boost to mode {_savedBoost}");
             }
+            else if (_guardActive)
+            {
+                int profileBoost = AppConfig.GetMode("auto_boost");
+                if (profileBoost >= 0) PowerNative.SetCPUBoost(profileBoost);
+            }
             _guardActive = false;
             _savedBoost = -1;
         }

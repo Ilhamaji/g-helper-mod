@@ -71,7 +71,7 @@ namespace GHelper.UI
 
             _checkDiscordOptimization = new RCheckBox
             {
-                Text = "Optimize Discord Voice CPU Priority During Gaming",
+                Text = "Lower Discord Voice CPU Priority (Warning: Turn OFF if voice chat stutters)",
                 Left = 15,
                 Top = 423,
                 AutoSize = true,
@@ -97,7 +97,7 @@ namespace GHelper.UI
 
             _checkThermalGuard = new RCheckBox
             {
-                Text = "Thermal Guard: Prevent CPU Overheating & Thermal Throttling Spikes",
+                Text = "Thermal Guard: Limit to Efficient Aggressive (Turn OFF if game stutters)",
                 Left = 15,
                 Top = 473,
                 AutoSize = true,
@@ -107,6 +107,10 @@ namespace GHelper.UI
             {
                 AppAutoBoostManager.IsThermalGuardEnabled = _checkThermalGuard.Checked;
             };
+
+            var toolTip = new ToolTip();
+            toolTip.SetToolTip(_checkDiscordOptimization, "Demotes Discord processes to BelowNormal priority while gaming. If you actively voice chat while playing heavy games, keeping this ON may cause audio stutter, robotic voice, or frametime drops. Keep OFF for smooth voice chat.");
+            toolTip.SetToolTip(_checkThermalGuard, "Forces CPU Boost mode to 'Efficient Aggressive' (mode 4). Clocks fluctuate rapidly during load changes, which can introduce micro-stuttering in CPU-intensive games. Keep OFF for maximum framerate stability.");
 
             _listRules = new ListView
             {

@@ -108,7 +108,14 @@ namespace GHelper.Helpers
         public static bool IsDiscordOptimizationEnabled
         {
             get => AppConfig.IsNotFalse("app_auto_boost_discord_optimization");
-            set => AppConfig.Set("app_auto_boost_discord_optimization", value ? 1 : 0);
+            set
+            {
+                AppConfig.Set("app_auto_boost_discord_optimization", value ? 1 : 0);
+                if (!value)
+                {
+                    OptimizeDiscord(false);
+                }
+            }
         }
 
         public static bool IsAutoRamFlushEnabled
@@ -120,7 +127,11 @@ namespace GHelper.Helpers
         public static bool IsThermalGuardEnabled
         {
             get => AppConfig.IsNotFalse("app_auto_boost_thermal_guard");
-            set => AppConfig.Set("app_auto_boost_thermal_guard", value ? 1 : 0);
+            set
+            {
+                AppConfig.Set("app_auto_boost_thermal_guard", value ? 1 : 0);
+                if (_isServiceRunning) CheckActiveForegroundApp(forceReapply: true);
+            }
         }
 
         public static List<TargetAppRule> GetRules()
@@ -200,6 +211,11 @@ namespace GHelper.Helpers
                     PowerNative.SetCPUBoost(_defaultBoostMode);
                     Logger.WriteLine($"AppAutoBoost ResetDefaultBoost: Restored CPU Boost to mode {_defaultBoostMode}");
                 }
+                else
+                {
+                    int profileBoost = AppConfig.GetMode("auto_boost");
+                    if (profileBoost >= 0) PowerNative.SetCPUBoost(profileBoost);
+                }
 
                 StopProcessMonitoring();
                 OptimizeDiscord(false);
@@ -233,6 +249,11 @@ namespace GHelper.Helpers
                 {
                     PowerNative.SetCPUBoost(_defaultBoostMode);
                     _defaultBoostMode = -1;
+                }
+                else
+                {
+                    int profileBoost = AppConfig.GetMode("auto_boost");
+                    if (profileBoost >= 0) PowerNative.SetCPUBoost(profileBoost);
                 }
                 _lastAppliedBoostMode = -1;
                 _lastMatchedApp = string.Empty;
@@ -305,7 +326,7 @@ namespace GHelper.Helpers
             return false;
         }
 
-        private static void CheckActiveForegroundApp()
+        public static void CheckActiveForegroundApp(bool forceReapply = false)
         {
             if (!_isServiceRunning) return;
 
@@ -320,7 +341,7 @@ namespace GHelper.Helpers
                 string procName = GetProcessNameFromPid(pid);
                 if (string.IsNullOrEmpty(procName)) return;
 
-                if (procName.Equals(_currentActiveApp, StringComparison.OrdinalIgnoreCase)) return;
+                if (!forceReapply && procName.Equals(_currentActiveApp, StringComparison.OrdinalIgnoreCase)) return;
                 _currentActiveApp = procName;
 
                 TargetAppRule? matchedRule = null;
@@ -518,7 +539,7 @@ namespace GHelper.Helpers
                         StopProcessMonitoring();
                         needRescan = true;
                     }
-                    else if (IsDiscordOptimizationEnabled)
+                    else if (IsDiscordOptimizationEnabled && !_wasDiscordOptimized)
                     {
                         OptimizeDiscord(true);
                     }
