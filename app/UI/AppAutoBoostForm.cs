@@ -13,7 +13,7 @@ namespace GHelper.UI
         private RCheckBox _checkAltTabProtection;
         private RCheckBox _checkDiscordOptimization;
         private RCheckBox _checkAutoRamFlush;
-        private RCheckBox _checkThermalGuard;
+        private RCheckBox _checkHighPriority;
         private ListView _listRules;
         private RButton _buttonAddRunning;
         private RButton _buttonAddFile;
@@ -37,7 +37,7 @@ namespace GHelper.UI
         {
             Text = "Target App Auto CPU Boost";
             Width = 620;
-            Height = 555;
+            Height = 580;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
@@ -95,22 +95,21 @@ namespace GHelper.UI
                 AppAutoBoostManager.IsAutoRamFlushEnabled = _checkAutoRamFlush.Checked;
             };
 
-            _checkThermalGuard = new RCheckBox
+            _checkHighPriority = new RCheckBox
             {
-                Text = "Thermal Guard: Limit to Efficient Aggressive (Turn OFF if game stutters)",
+                Text = "Set Target App Priority to Above Normal",
                 Left = 15,
                 Top = 473,
                 AutoSize = true,
-                Checked = AppAutoBoostManager.IsThermalGuardEnabled
+                Checked = AppAutoBoostManager.IsHighPriorityEnabled
             };
-            _checkThermalGuard.CheckedChanged += (s, e) =>
+            _checkHighPriority.CheckedChanged += (s, e) =>
             {
-                AppAutoBoostManager.IsThermalGuardEnabled = _checkThermalGuard.Checked;
+                AppAutoBoostManager.IsHighPriorityEnabled = _checkHighPriority.Checked;
             };
 
             var toolTip = new ToolTip();
             toolTip.SetToolTip(_checkDiscordOptimization, "Demotes Discord processes to BelowNormal priority while gaming. If you actively voice chat while playing heavy games, keeping this ON may cause audio stutter, robotic voice, or frametime drops. Keep OFF for smooth voice chat.");
-            toolTip.SetToolTip(_checkThermalGuard, "Forces CPU Boost mode to 'Efficient Aggressive' (mode 4). Clocks fluctuate rapidly during load changes, which can introduce micro-stuttering in CPU-intensive games. Keep OFF for maximum framerate stability.");
 
             _listRules = new ListView
             {
@@ -185,7 +184,7 @@ namespace GHelper.UI
             Controls.Add(_checkAltTabProtection);
             Controls.Add(_checkDiscordOptimization);
             Controls.Add(_checkAutoRamFlush);
-            Controls.Add(_checkThermalGuard);
+            Controls.Add(_checkHighPriority);
             Controls.Add(_listRules);
             Controls.Add(_buttonAddRunning);
             Controls.Add(_buttonAddFile);

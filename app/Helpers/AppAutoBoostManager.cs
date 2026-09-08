@@ -60,6 +60,8 @@ namespace GHelper.Helpers
         private const uint PROCESS_SET_INFORMATION = 0x0200;
         private const uint BELOW_NORMAL_PRIORITY_CLASS = 0x00004000;
         private const uint NORMAL_PRIORITY_CLASS = 0x00000020;
+        private const uint ABOVE_NORMAL_PRIORITY_CLASS = 0x00008000;
+        private const uint HIGH_PRIORITY_CLASS = 0x00000080;
 
         // ── Fields ────────────────────────────────────────────────────────────
         private static readonly object _stateLock = new();
@@ -124,12 +126,12 @@ namespace GHelper.Helpers
             set => AppConfig.Set("app_auto_boost_ram_flush", value ? 1 : 0);
         }
 
-        public static bool IsThermalGuardEnabled
+        public static bool IsHighPriorityEnabled
         {
-            get => AppConfig.IsNotFalse("app_auto_boost_thermal_guard");
+            get => AppConfig.IsNotFalse("app_auto_boost_high_priority");
             set
             {
-                AppConfig.Set("app_auto_boost_thermal_guard", value ? 1 : 0);
+                AppConfig.Set("app_auto_boost_high_priority", value ? 1 : 0);
                 if (_isServiceRunning) CheckActiveForegroundApp(forceReapply: true);
             }
         }
@@ -366,16 +368,12 @@ namespace GHelper.Helpers
                     }
 
                     int targetBoostMode = matchedRule.BoostMode;
-                    if (IsThermalGuardEnabled && (targetBoostMode == 2 || targetBoostMode == 1))
-                    {
-                        targetBoostMode = 4; // Efficient Aggressive mode to prevent thermal throttling
-                    }
 
                     if (_lastAppliedBoostMode != targetBoostMode)
                     {
                         PowerNative.SetCPUBoost(targetBoostMode);
                         _lastAppliedBoostMode = targetBoostMode;
-                        Logger.WriteLine($"AppAutoBoost matched '{procName}': Switched CPU Boost to mode {targetBoostMode} (ThermalGuard={(IsThermalGuardEnabled ? "ON" : "OFF")})");
+                        Logger.WriteLine($"AppAutoBoost matched '{procName}': Switched CPU Boost to mode {targetBoostMode}");
                     }
 
                     if (IsAutoRamFlushEnabled && !procName.Equals(_lastMatchedApp, StringComparison.OrdinalIgnoreCase))
@@ -392,6 +390,7 @@ namespace GHelper.Helpers
                     _lastMatchedPid = (int)pid;
                     StartProcessMonitoring();
                     OptimizeDiscord(true);
+                    SetApplicationPriority((int)pid, true);
                 }
                 else
                 {
@@ -400,10 +399,6 @@ namespace GHelper.Helpers
                         if (IsAltTabProtectionEnabled && TryFindRunningTargetApp(out string bgApp, out int bgMode, out int bgPid))
                         {
                             int targetBgMode = bgMode;
-                            if (IsThermalGuardEnabled && (targetBgMode == 2 || targetBgMode == 1))
-                            {
-                                targetBgMode = 4; // Efficient Aggressive mode
-                            }
 
                             if (_lastAppliedBoostMode != targetBgMode)
                             {
@@ -416,6 +411,7 @@ namespace GHelper.Helpers
                             Logger.WriteLine($"AppAutoBoost Alt+Tab protection active: Keeping CPU Boost at mode {targetBgMode} for background app '{bgApp}' (PID {bgPid})");
                             StartProcessMonitoring();
                             OptimizeDiscord(true);
+                            SetApplicationPriority(bgPid, true);
                         }
                         else
                         {
@@ -483,6 +479,40 @@ namespace GHelper.Helpers
             catch (Exception ex)
             {
                 Logger.WriteLine("OptimizeDiscord error: " + ex.Message);
+            }
+        }
+
+        public static void SetApplicationPriority(int pid, bool enable)
+        {
+            if (!IsHighPriorityEnabled || pid <= 0) return;
+
+            uint targetPriority = enable ? ABOVE_NORMAL_PRIORITY_CLASS : NORMAL_PRIORITY_CLASS;
+
+            try
+            {
+                IntPtr hProcess = OpenProcess(PROCESS_SET_INFORMATION | PROCESS_QUERY_LIMITED_INFORMATION, false, (uint)pid);
+                if (hProcess != IntPtr.Zero)
+                {
+                    try
+                    {
+                        uint currentClass = GetPriorityClass(hProcess);
+                        if (currentClass != targetPriority && currentClass != 0)
+                        {
+                            if (SetPriorityClass(hProcess, targetPriority))
+                            {
+                                Logger.WriteLine($"AppAutoBoost: Set application priority (PID {pid}) to {(enable ? "AboveNormal" : "Normal")}");
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        CloseHandle(hProcess);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteLine($"SetApplicationPriority error: {ex.Message}");
             }
         }
 
