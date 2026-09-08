@@ -991,6 +991,21 @@ namespace GHelper
             sliderBrightness.ValueChanged += SliderBrightness_ValueChanged;
         }
 
+        public void FormPosition()
+        {
+            if (Height > Program.settingsForm.Height)
+            {
+                Top = Math.Max(0, Program.settingsForm.Top + Program.settingsForm.Height - Height);
+            }
+            else
+            {
+                Height = Program.settingsForm.Height;
+                Top = Program.settingsForm.Top;
+            }
+
+            Left = Program.settingsForm.Left - Width - 5;
+        }
+
         private void InitServices()
         {
 
