@@ -43,29 +43,12 @@ namespace GHelper.Helpers
                 CpuAntiFreezeManager.ResetToCleanDefaults();
                 report.AppendLine("✓ CPU Anti-Freeze disabled (Processor Min State reset to 5%, ASPM restored).");
 
-                // 4. Idle Boost Guard
-                IdleBoostGuard.IsEnabled = false;
-                IdleBoostGuard.Stop();
-                report.AppendLine("✓ Idle Boost Guard stopped & polling timer cleared.");
-
-                // 5. EcoQoS Manager
-                EcoQosManager.IsEnabled = false;
-                EcoQosManager.RestoreAllApplied();
-                EcoQosManager.Stop();
-                report.AppendLine("✓ EcoQoS disabled & background power throttling cleared from all processes.");
-
-                // 6. CPU Core Affinity
-                CpuAffinityManager.IsEnabled = false;
-                CpuAffinityManager.RestoreAllApplied();
-                CpuAffinityManager.Stop();
-                report.AppendLine("✓ CPU Core Affinity disabled & all processes restored to full core mask.");
-
-                // 7. Auto Standby RAM Cleaner
+                // 4. Auto Standby RAM Cleaner
                 AppConfig.Set("auto_ram_cleaner_enabled", 0);
                 MemoryCleaner.SetAutoCleaner(false);
                 report.AppendLine("✓ Auto Standby RAM Cleaner disabled.");
 
-                // 8. Microphone Noise EQ / VST DSP
+                // 5. Microphone Noise EQ / VST DSP
                 AppConfig.Set("mic_noise_enabled", 0);
                 MicNoiseManager.ApplyMicConfig();
                 report.AppendLine("✓ Microphone Noise EQ disabled & audio reset to raw bit-perfect stream.");

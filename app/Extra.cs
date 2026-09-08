@@ -590,7 +590,7 @@ namespace GHelper
             var toolTipReset = new ToolTip();
             toolTipReset.SetToolTip(buttonResetAll,
                 "Immediately restores: CPU Boost to profile default, Discord priority to Normal, " +
-                "Processor Min-State to 5%, EcoQoS OFF, CPU Affinity to All Cores, Mic EQ disabled.");
+                "Processor Min-State to 5%, Mic EQ disabled.");
             buttonResetAll.Click += (s, e) =>
             {
                 string report = ModFeatureResetHelper.RestoreAllToSystemDefaults();
@@ -661,15 +661,7 @@ namespace GHelper
             panelAntiFreezeCol.Controls.Add(MakeHint("Raise CPU min-state floor & keep-alive pulse to prevent idle freeze"));
             AddRow(buttonAppBoost, panelAntiFreezeCol, 4);
 
-            // Row: CPU Core Affinity | hint
-            RButton buttonAffinity = new RButton { Text = "CPU Core Affinity…", Dock = DockStyle.Fill, Height = 30 };
-            buttonAffinity.Click += (s, e) => { using var f = new CpuAffinityForm(); f.ShowDialog(this); };
-            AddRow(buttonAffinity, MakeHint("Bind games/apps to specific CPU cores (P-cores / E-cores / custom)"), 4);
 
-            // Row: EcoQoS Energy Saver | hint
-            RButton buttonEcoQos = new RButton { Text = "EcoQoS Energy Saver…", Dock = DockStyle.Fill, Height = 30 };
-            buttonEcoQos.Click += (s, e) => { using var f = new EcoQosForm(); f.ShowDialog(this); };
-            AddRow(buttonEcoQos, MakeHint("Reduce power & heat of background apps — per-rule or globally"), 8);
 
             // ─────────────────────────────────────────────────────────────────────
             //  SECTION 2 ── Standby Memory
@@ -750,99 +742,7 @@ namespace GHelper
             panelMicCol.Controls.Add(labelMicStatus);
             AddRow(buttonMicEq, panelMicCol, 8);
 
-            // ─────────────────────────────────────────────────────────────────────
-            //  SECTION 4 ── Idle Boost Guard
-            // ─────────────────────────────────────────────────────────────────────
-            AddFullRow(MakeDivider(), 2);
-            AddFullRow(MakeSectionLabel("▸  Idle Boost Guard"), 2);
 
-            // Enable toggle row
-            var panelGuardToggle = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-            RCheckBox checkIdleGuard = new RCheckBox
-            {
-                Text = "Auto-lower CPU Boost when idle (prevents idle freeze/spike)",
-                AutoSize = true,
-                Margin = new Padding(0),
-                Checked = IdleBoostGuard.IsEnabled
-            };
-            panelGuardToggle.Controls.Add(checkIdleGuard);
-            panelGuardToggle.Controls.Add(MakeHint("Safely reduces CPU boost mode after sustained idle period, restored on activity"));
-            AddFullRow(panelGuardToggle, 6);
-
-            // Sub-controls row: threshold + hold + safe mode
-            Panel panelGuardSubs = new Panel { Dock = DockStyle.Top, Height = 58, Padding = new Padding(0) };
-
-            Label labelGuardThreshold = new Label { Text = $"CPU < {IdleBoostGuard.IdleUsageThreshold}%", Left = 0, Top = 6, AutoSize = true };
-            RTrackBar trackGuardThreshold = new RTrackBar
-            {
-                Left = 68, Top = 2, Width = 130,
-                Minimum = 1, Maximum = 50,
-                Value = IdleBoostGuard.IdleUsageThreshold
-            };
-
-            Label labelGuardHold = new Label { Text = $"Hold {IdleBoostGuard.HoldSeconds}s", Left = 216, Top = 6, AutoSize = true };
-            RTrackBar trackGuardHold = new RTrackBar
-            {
-                Left = 266, Top = 2, Width = 120,
-                Minimum = 3, Maximum = 60,
-                Value = IdleBoostGuard.HoldSeconds
-            };
-
-            Label labelGuardSafe = new Label { Text = "Safe boost:", Left = 0, Top = 38, AutoSize = true };
-
-            int[] guardModeValues = { 0, 1, 3, 4, 5, 6 };
-            string[] guardModeNames = { "Disabled", "Enabled", "Efficient Enabled", "Efficient Aggressive", "Aggressive at Gtd", "Efficient Aggr. Gtd" };
-
-            RComboBox comboGuardSafeMode = new RComboBox
-            {
-                Left = 68, Top = 34, Width = 240,
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-            foreach (var n in guardModeNames) comboGuardSafeMode.Items.Add(n);
-            int safeIdx = Array.IndexOf(guardModeValues, IdleBoostGuard.SafeBoostMode);
-            comboGuardSafeMode.SelectedIndex = safeIdx >= 0 ? safeIdx : 2;
-
-            panelGuardSubs.Controls.AddRange(new Control[] {
-                labelGuardThreshold, trackGuardThreshold,
-                labelGuardHold, trackGuardHold,
-                labelGuardSafe, comboGuardSafeMode
-            });
-            AddFullRow(panelGuardSubs, 4);
-
-            // ── Wire up guard events ──────────────────────────────────────────────
-            void SetGuardControls(bool enabled)
-            {
-                trackGuardThreshold.Enabled = enabled;
-                trackGuardHold.Enabled      = enabled;
-                comboGuardSafeMode.Enabled  = enabled;
-                Color fc = enabled ? SystemColors.ControlText : SystemColors.GrayText;
-                labelGuardThreshold.ForeColor = fc;
-                labelGuardHold.ForeColor      = fc;
-                labelGuardSafe.ForeColor      = fc;
-            }
-
-            SetGuardControls(checkIdleGuard.Checked);
-
-            checkIdleGuard.CheckedChanged += (s, e) =>
-            {
-                IdleBoostGuard.IsEnabled = checkIdleGuard.Checked;
-                SetGuardControls(checkIdleGuard.Checked);
-            };
-            trackGuardThreshold.ValueChanged += (s, e) =>
-            {
-                AppConfig.Set("idle_boost_cpu_threshold", trackGuardThreshold.Value);
-                labelGuardThreshold.Text = $"CPU < {trackGuardThreshold.Value}%";
-            };
-            trackGuardHold.ValueChanged += (s, e) =>
-            {
-                AppConfig.Set("idle_boost_hold_seconds", trackGuardHold.Value);
-                labelGuardHold.Text = $"Hold {trackGuardHold.Value}s";
-            };
-            comboGuardSafeMode.SelectedIndexChanged += (s, e) =>
-            {
-                if (comboGuardSafeMode.SelectedIndex >= 0)
-                    AppConfig.Set("idle_boost_safe_mode", guardModeValues[comboGuardSafeMode.SelectedIndex]);
-            };
 
             // ── Assemble root panel ───────────────────────────────────────────────
             // Controls added in reverse draw order (last added = drawn first / bottom)

@@ -1250,6 +1250,7 @@ namespace GHelper
             }
             else
             {
+                extraForm.FormPosition();
                 extraForm.Show();
             }
         }

@@ -883,7 +883,6 @@ namespace GHelper.Overlay
 
         private Brush GetBoostBrush()
         {
-            if (Helpers.IdleBoostGuard.IsGuardActive) return _guardSafeBrush;
             int mode = GHelper.Mode.PowerNative.GetCPUBoost();
             return mode == 2 ? _boostWarnBrush : _cpuBrush;
         }

@@ -118,9 +118,6 @@ namespace GHelper
 
             CpuAntiFreezeManager.Initialize();
             AppAutoBoostManager.Initialize();
-            IdleBoostGuard.Initialize();
-            CpuAffinityManager.Initialize();
-            EcoQosManager.Initialize();
             MemoryCleaner.SetAutoCleaner(AppConfig.Is("auto_ram_cleaner_enabled"));
             MicNoiseManager.ApplyMicConfig();
 
@@ -249,7 +246,6 @@ namespace GHelper
         private static void SystemEvents_SessionEnding(object sender, SessionEndingEventArgs e)
         {
             AppAutoBoostManager.StopService();
-            IdleBoostGuard.Stop();
             MemoryCleaner.SetAutoCleaner(false);
             hardwareOverlay?.StopOverlay();
             gpuControl.StandardModeFix();
