@@ -71,6 +71,9 @@ namespace GHelper
             labelEqStrengthTitle = new Label();
             labelEqStrength = new Label();
             trackEqStrength = new RTrackBar();
+            labelEqGraceTitle = new Label();
+            labelEqGrace = new Label();
+            trackEqGrace = new RTrackBar();
             panelToggles.SuspendLayout();
             tableModes.SuspendLayout();
             tableBlocks.SuspendLayout();
@@ -81,6 +84,7 @@ namespace GHelper
             panelHotkeys.SuspendLayout();
             panelEq.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)trackEqStrength).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)trackEqGrace).BeginInit();
             SuspendLayout();
             //
             // panelToggles
@@ -571,6 +575,9 @@ namespace GHelper
             panelEq.Controls.Add(labelEqStrengthTitle);
             panelEq.Controls.Add(labelEqStrength);
             panelEq.Controls.Add(trackEqStrength);
+            panelEq.Controls.Add(labelEqGraceTitle);
+            panelEq.Controls.Add(labelEqGrace);
+            panelEq.Controls.Add(trackEqGrace);
             panelEq.Dock = DockStyle.Top;
             panelEq.Name = "panelEq";
             panelEq.Size = new Size(880, 260);
@@ -624,9 +631,9 @@ namespace GHelper
             // labelEqStrength
             //
             labelEqStrength.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            labelEqStrength.Location = new Point(770, 156);
+            labelEqStrength.Location = new Point(300, 156);
             labelEqStrength.Name = "labelEqStrength";
-            labelEqStrength.Size = new Size(100, 32);
+            labelEqStrength.Size = new Size(130, 32);
             labelEqStrength.TabIndex = 5;
             labelEqStrength.TextAlign = ContentAlignment.TopRight;
             //
@@ -636,11 +643,39 @@ namespace GHelper
             trackEqStrength.Location = new Point(6, 192);
             trackEqStrength.Maximum = 100;
             trackEqStrength.Name = "trackEqStrength";
-            trackEqStrength.Size = new Size(864, 60);
+            trackEqStrength.Size = new Size(424, 60);
             trackEqStrength.SmallChange = 5;
             trackEqStrength.TabIndex = 6;
             trackEqStrength.TickFrequency = 10;
             trackEqStrength.TickStyle = TickStyle.TopLeft;
+            //
+            // labelEqGraceTitle
+            //
+            labelEqGraceTitle.AutoSize = true;
+            labelEqGraceTitle.Location = new Point(450, 156);
+            labelEqGraceTitle.Name = "labelEqGraceTitle";
+            labelEqGraceTitle.TabIndex = 7;
+            //
+            // labelEqGrace
+            //
+            labelEqGrace.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            labelEqGrace.Location = new Point(740, 156);
+            labelEqGrace.Name = "labelEqGrace";
+            labelEqGrace.Size = new Size(130, 32);
+            labelEqGrace.TabIndex = 8;
+            labelEqGrace.TextAlign = ContentAlignment.TopRight;
+            //
+            // trackEqGrace
+            //
+            trackEqGrace.LargeChange = 5;
+            trackEqGrace.Location = new Point(450, 192);
+            trackEqGrace.Maximum = 30;
+            trackEqGrace.Name = "trackEqGrace";
+            trackEqGrace.Size = new Size(424, 60);
+            trackEqGrace.SmallChange = 1;
+            trackEqGrace.TabIndex = 9;
+            trackEqGrace.TickFrequency = 5;
+            trackEqGrace.TickStyle = TickStyle.TopLeft;
             //
             // OverlayConfig
             //
@@ -677,6 +712,7 @@ namespace GHelper
             panelEq.ResumeLayout(false);
             panelEq.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)trackEqStrength).EndInit();
+            ((System.ComponentModel.ISupportInitialize)trackEqGrace).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -725,5 +761,8 @@ namespace GHelper
         private Label labelEqStrengthTitle;
         private Label labelEqStrength;
         private RTrackBar trackEqStrength;
+        private Label labelEqGraceTitle;
+        private Label labelEqGrace;
+        private RTrackBar trackEqGrace;
     }
 }

@@ -48,6 +48,8 @@ namespace GHelper
 
         // 0 = RNNoise off. Otherwise maps to the plugin's VAD threshold: higher gates non-speech harder.
         public static int Strength => Math.Clamp(AppConfig.Get("eq_rnnoise", 60), 0, 100);
+        // Seconds the gate stays open after speech stops. Too low clips word tails, too high lets noise through.
+        public static int Grace => Math.Clamp(AppConfig.Get("eq_rnnoise_grace", 5), 0, 30);
 
         // Master switch: when off the generated chain is empty, so the mic runs with zero processing.
         // The VST costs ~20% of one core on low-end CPUs, and only while an app holds the microphone.
@@ -140,7 +142,7 @@ namespace GHelper
             {
                 string dll = AppConfig.GetString("eq_rnnoise_dll", DefaultDll);
                 if (dll.Contains(' ')) dll = $"\"{dll}\"";
-                sb.Append($"VSTPlugin: Library {dll} ChunkData \"{RnnoiseChunk(Strength / 100.0)}\"\n");
+                sb.Append($"VSTPlugin: Library {dll} ChunkData \"{RnnoiseChunk(Strength / 100.0, Grace)}\"\n");
             }
 
             if (PresetBody.TryGetValue(Preset, out var body)) sb.Append(body);
@@ -148,10 +150,10 @@ namespace GHelper
         }
 
         // VST2 chunk the rnnoise plugin saves: "VC2!" + int32 xml length + xml + NUL.
-        static string RnnoiseChunk(double vadThreshold)
+        static string RnnoiseChunk(double vadThreshold, int grace)
         {
             string xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?> <RNNoise>" +
-                "<PARAM id=\"vad_grace_period\" value=\"5.0\"/>" +
+                $"<PARAM id=\"vad_grace_period\" value=\"{grace}.0\"/>" +
                 "<PARAM id=\"vad_retroactive_grace_period\" value=\"0.0\"/>" +
                 $"<PARAM id=\"vad_threshold\" value=\"{vadThreshold.ToString("0.0###", System.Globalization.CultureInfo.InvariantCulture)}\"/></RNNoise>";
             byte[] body = Encoding.UTF8.GetBytes(xml);

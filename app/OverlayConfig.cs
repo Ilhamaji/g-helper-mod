@@ -186,6 +186,7 @@ namespace GHelper
             labelEqPresetInner.Text = "Mic preset";
             buttonEqBrowse.Text = "RNNoise DLL...";
             labelEqStrengthTitle.Text = "RNNoise strength";
+            labelEqGraceTitle.Text = "Gate hold";
 
             eqLoading = true;
             comboEqPreset.Items.AddRange(EqualizerApo.Presets);
@@ -193,6 +194,8 @@ namespace GHelper
             if (comboEqPreset.SelectedIndex < 0) comboEqPreset.SelectedIndex = 0;
             trackEqStrength.Value = EqualizerApo.Strength;
             labelEqStrength.Text = trackEqStrength.Value + "%";
+            trackEqGrace.Value = EqualizerApo.Grace;
+            labelEqGrace.Text = trackEqGrace.Value + " s";
             eqLoading = false;
 
             comboEqPreset.SelectedIndexChanged += (s, e) => ApplyEqualizer(() => EqualizerApo.Preset = (string)comboEqPreset.SelectedItem!);
@@ -200,6 +203,11 @@ namespace GHelper
             {
                 labelEqStrength.Text = trackEqStrength.Value + "%";
                 ApplyEqualizer(() => AppConfig.Set("eq_rnnoise", trackEqStrength.Value));
+            };
+            trackEqGrace.ValueChanged += (s, e) =>
+            {
+                labelEqGrace.Text = trackEqGrace.Value + " s";
+                ApplyEqualizer(() => AppConfig.Set("eq_rnnoise_grace", trackEqGrace.Value));
             };
             buttonEqBrowse.Click += BtnEqBrowse_Click;
 
