@@ -57,7 +57,6 @@ namespace GHelper.Mode
 
         static readonly Guid GUID_CPU = new Guid("54533251-82be-4824-96c1-47b60b740d00");
         static readonly Guid GUID_BOOST = new Guid("be337238-0d82-4146-a960-4f3749d470c7");
-        static readonly Guid GUID_THROTTLE_MAX = new Guid("bc5038f7-23e0-4960-96da-33abaf5935ec");
 
         private static Guid GUID_SLEEP_SUBGROUP = new Guid("238c9fa8-0aad-41ed-83f4-97be242c8f20");
         private static Guid GUID_HIBERNATEIDLE = new Guid("9d7815a6-7ee4-497e-8888-515a05f02364");
@@ -147,34 +146,6 @@ namespace GHelper.Mode
             PowerSetActiveScheme(IntPtr.Zero, activeSchemeGuid);
 
             Logger.WriteLine("Boost " + boost);
-        }
-
-        // Maximum processor state (PROCTHROTTLEMAX). 100 = the hardware may use its full
-        // ratio range, so boost is governed only by the boost mode above. A lower cap
-        // keeps the CPU under its base clock, which is the only lever Windows exposes
-        // that removes the boost voltage/frequency spikes without disabling boost.
-        public static int GetCPUMaxState()
-        {
-            Guid activeSchemeGuid = GetActiveScheme();
-            UInt32 hr = PowerReadACValueIndex(IntPtr.Zero, activeSchemeGuid, GUID_CPU, GUID_THROTTLE_MAX, out IntPtr value);
-            if (hr != 0) return -1;
-            return value.ToInt32();
-        }
-
-        public static void SetCPUMaxState(int percent)
-        {
-            percent = Math.Clamp(percent, 5, 100);
-
-            Guid activeSchemeGuid = GetActiveScheme();
-            if (percent == GetCPUMaxState()) return;
-
-            PowerWriteACValueIndex(IntPtr.Zero, activeSchemeGuid, GUID_CPU, GUID_THROTTLE_MAX, percent);
-            PowerSetActiveScheme(IntPtr.Zero, activeSchemeGuid);
-
-            PowerWriteDCValueIndex(IntPtr.Zero, activeSchemeGuid, GUID_CPU, GUID_THROTTLE_MAX, percent);
-            PowerSetActiveScheme(IntPtr.Zero, activeSchemeGuid);
-
-            Logger.WriteLine("Max CPU state " + percent);
         }
 
         public static string GetPowerMode()
