@@ -10,6 +10,8 @@ namespace GHelper
         int mode;
         bool updating;
 
+        bool eqLoading;
+
         public OverlayConfig()
         {
             InitializeComponent();
@@ -29,12 +31,15 @@ namespace GHelper
             checkUsage.Text = Properties.Strings.OverlayLoad;
             checkBattery.Text = Properties.Strings.Battery;
             checkLabels.Text = Properties.Strings.OverlayLabels;
+            checkBoost.Text = Properties.Strings.CPUBoost;
             labelSizeTitle.Text = Properties.Strings.OverlaySize;
             labelAlphaTitle.Text = Properties.Strings.OverlayTransparency;
             labelHotkeys.Text = "•  Ctrl + Shift + Alt + O - Toggle overlay\n•  Ctrl + Shift + Alt + Mouse Drag - Move overlay\n•  Ctrl + Shift + Alt + Mouse Click - Switch mode\n•  Ctrl + Shift + Alt + Wheel - Resize overlay\n•  Ctrl + Shift + Alt + Wheel Click - Reset size";
             buttonCpuColor.Text = "CPU " + Properties.Strings.Color;
             buttonGpuColor.Text = "GPU " + Properties.Strings.Color;
             buttonReset.Text = Properties.Strings.Reset;
+
+            InitEqualizer();
 
             modeButtons = new[] { buttonDefault, buttonLight, buttonFull, buttonComplete };
 
@@ -49,6 +54,7 @@ namespace GHelper
                 (checkRam, "overlay_show_ram"),
                 (checkLabels, "overlay_names"),
                 (checkInline, "overlay_inline"),
+                (checkBoost, "overlay_show_boost"),
             };
 
             checkEnable.Checked = AppConfig.IsOverlay();
@@ -106,13 +112,13 @@ namespace GHelper
             AppConfig.Remove("overlay_alpha");
             AppConfig.Remove("overlay_color_cpu");
             AppConfig.Remove("overlay_color_gpu");
+            Program.hardwareOverlay?.RefreshSettings();
 
             VisualiseBlocks();
             trackScale.Value = 100;
             trackAlpha.Value = 128;
             buttonCpuColor.SwatchColor = HardwareOverlay.CpuColor;
             buttonGpuColor.SwatchColor = HardwareOverlay.GpuColor;
-            Program.hardwareOverlay?.RefreshSettings();
         }
 
         private void VisualiseBlocks()
@@ -173,6 +179,73 @@ namespace GHelper
                 Program.hardwareOverlay?.RefreshSettings();
             };
             colorDlg.ShowDialog(this);
+        }
+
+        private void InitEqualizer()
+        {
+            labelEqPresetInner.Text = "Mic preset";
+            buttonEqBrowse.Text = "RNNoise DLL...";
+            labelEqStrengthTitle.Text = "RNNoise strength";
+
+            eqLoading = true;
+            comboEqPreset.Items.AddRange(EqualizerApo.Presets);
+            comboEqPreset.SelectedItem = EqualizerApo.Preset;
+            if (comboEqPreset.SelectedIndex < 0) comboEqPreset.SelectedIndex = 0;
+            trackEqStrength.Value = EqualizerApo.Strength;
+            labelEqStrength.Text = trackEqStrength.Value + "%";
+            eqLoading = false;
+
+            comboEqPreset.SelectedIndexChanged += (s, e) => ApplyEqualizer(() => EqualizerApo.Preset = (string)comboEqPreset.SelectedItem!);
+            trackEqStrength.ValueChanged += (s, e) =>
+            {
+                labelEqStrength.Text = trackEqStrength.Value + "%";
+                ApplyEqualizer(() => AppConfig.Set("eq_rnnoise", trackEqStrength.Value));
+            };
+            buttonEqBrowse.Click += BtnEqBrowse_Click;
+
+            RefreshEqStatus();
+        }
+
+        private void ApplyEqualizer(Action save)
+        {
+            if (eqLoading) return;
+            save();
+            try { EqualizerApo.Apply(); }
+            catch (Exception ex) { Logger.WriteLine("EqualizerAPO apply failed: " + ex); }
+            RefreshEqStatus();
+        }
+
+        private void RefreshEqStatus()
+        {
+            var (ok, text) = EqualizerApo.Status();
+            labelEqStatus.Text = text;
+            labelEqStatus.ForeColor = ok ? colorEco : colorTurbo;
+        }
+
+        private void BtnEqBrowse_Click(object? sender, EventArgs e)
+        {
+            // Process has no [STAThread]; the shell file dialog hangs off an STA thread (same as AniMatrixControl).
+            // It must not be joined on the UI thread: while the dialog is open the main
+            // window would stop pumping and Windows would mark G-Helper as not responding.
+            var t = new Thread(() =>
+            {
+                string? path = null;
+                using (var dlg = new OpenFileDialog { Filter = "RNNoise VST2 (*.dll)|*.dll", Title = "Select RNNoise DLL" })
+                {
+                    if (dlg.ShowDialog() == DialogResult.OK) path = dlg.FileName;
+                }
+
+                if (path is null) return;
+
+                try
+                {
+                    BeginInvoke(() => ApplyEqualizer(() => AppConfig.Set("eq_rnnoise_dll", path)));
+                }
+                catch (InvalidOperationException) { }
+            });
+            t.SetApartmentState(ApartmentState.STA);
+            t.IsBackground = true;
+            t.Start();
         }
     }
 }

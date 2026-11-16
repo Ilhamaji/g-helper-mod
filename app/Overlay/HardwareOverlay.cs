@@ -1,4 +1,5 @@
 using GHelper.Helpers;
+using GHelper.Mode;
 using Microsoft.Win32;
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
@@ -121,6 +122,7 @@ namespace GHelper.Overlay
         private const int BaseBatIconHeight = 15;
         private const int BaseBatNubWidth = 4;
         private const int BaseBatNubHeight = 2;
+        private const int BaseBoostColWidth = 58;    // fits 'EffAggr'
         private const int BaseLightWidth = BasePadX + BaseFpsColWidth + BaseColGap + BaseLightLeftColWidth + BasePowerGap + BasePowerColWidth + BasePadX;
         private const int BaseWidth = BasePadX + BaseFpsColWidth + BaseColGap + BaseLeftColWidth + BaseColGap + BaseChartColWidth + BasePowerGap + BasePowerColWidth + BasePadX;
         private const int BaseFullWidth = BaseWidth - BasePadX + BaseUsageBarGap + BaseUsageBarWidth + BaseUsageNumGap + BaseUsageNumColWidth + BaseFullPadRight;
@@ -175,6 +177,7 @@ namespace GHelper.Overlay
         private int? _ramUsedMb;
         private int? _gpuClock;
         private int? _cpuClock;
+        private string _boostStr = "";
         private string _gpuShortName = "";
         private string _cpuShortName = "";
         private string _batLevel = "";
@@ -200,7 +203,7 @@ namespace GHelper.Overlay
         private bool _gameOnly;
         private bool _showNames;
         private bool _inline;
-        private bool _showFps, _showTemp, _showFans, _showChart, _showPower, _showUsage, _showClocks, _showRam, _showBattery;
+        private bool _showFps, _showTemp, _showFans, _showChart, _showPower, _showUsage, _showClocks, _showRam, _showBattery, _showBoost;
         private bool _onBattery;
         private int _overlayBattery = -1;
         private static readonly bool _isAlly = AppConfig.IsAlly();
@@ -290,8 +293,8 @@ namespace GHelper.Overlay
                 int newY = _dragWindowStart.Y + cursor.Y - _dragCursorStart.Y;
                 Screen screen = Screen.FromPoint(cursor);
                 const int margin = 5;
-                newX = Math.Clamp(newX, screen.Bounds.Left + margin, screen.Bounds.Right  - Width  - margin);
-                newY = Math.Clamp(newY, screen.Bounds.Top  + margin, screen.Bounds.Bottom - Height - margin);
+                newX = Math.Clamp(newX, screen.WorkingArea.Left + margin, screen.WorkingArea.Right  - Width  - margin);
+                newY = Math.Clamp(newY, screen.WorkingArea.Top  + margin, screen.WorkingArea.Bottom - Height - margin);
                 Location = new Point(newX, newY);
                 m.Result = IntPtr.Zero;
                 return;
@@ -346,6 +349,7 @@ namespace GHelper.Overlay
                 _                    => BaseWidth,
             };
             if (_showBattery && _onBattery) w += BaseBatColGap + BaseBatColWidth + BaseBatIconGap + BaseBatIconWidth;
+            if (_showBoost) w += BaseColGap + BaseBoostColWidth;
             return _showNames ? w + BaseNameColWidth + BaseColGap : w;
         }
 
@@ -468,6 +472,7 @@ namespace GHelper.Overlay
             _ramUsedMb = HardwareControl.ramUsedMb;
             _gpuClock = gpuActive ? HardwareControl.gpuClock : null;
             _cpuClock = HardwareControl.cpuClock;
+            if (_showBoost) _boostStr = BoostShortName(PowerNative.GetCPUBoost());
 
             if (_showBattery)
             {
@@ -620,6 +625,8 @@ namespace GHelper.Overlay
                 cursor = batIconX + S(sc, BaseBatIconWidth);
             }
 
+            int boostX = cursor;
+            if (_showBoost) { boostX = cursor + colGap; cursor = boostX + S(sc, BaseBoostColWidth); }
             int row2X = inline ? cursor - nameX + colGap : 0;
             int row2Y = inline ? 0 : lineH + lineGap;
             int width = cursor + row2X + padX;
@@ -743,8 +750,28 @@ namespace GHelper.Overlay
                 int batIconH = S(sc, BaseBatIconHeight);
                 DrawBatteryIcon(g, batIconX, topY + (lineH - batIconH) / 2 - S(sc, BaseUsageBarYNudge), batIconH, sc, _batPercent, _batCharging);
             }
+            if (_showBoost && _boostStr.Length > 0)
+            {
+                g.DrawString("BOOST", font, _batDimBrush, new PointF(boostX, textY));
+                g.DrawString(_boostStr, font, _cpuBrush, new PointF(boostX + row2X, textY + row2Y));
+            }
         }
 
+        // Short labels: the overlay column is ~8 characters wide.
+        private static string BoostShortName(int boost)
+        {
+            return boost switch
+            {
+                0 => "Off",
+                1 => "On",
+                2 => "Aggr",
+                3 => "EffOn",
+                4 => "EffAggr",
+                5 => "GrAggr",
+                6 => "GrEff",
+                _ => "",
+            };
+        }
         private static void DrawUsagePercent(Graphics g, Font font, int x, int colW, int y, int? usage, SolidBrush brush)
         {
             if (!usage.HasValue) return; // mirror the power column — empty when unavailable
@@ -884,10 +911,12 @@ namespace GHelper.Overlay
             g.FillPolygon(brush, _polyPts);
         }
 
-        private void PositionAtTopLeft()
+        // Default spot: bottom-right of the usable desktop, so the box sits above the
+        // taskbar instead of in the top-left corner.
+        private void PositionAtBottomRight()
         {
-            Screen screen = Screen.PrimaryScreen ?? Screen.AllScreens[0];
-            Location = new Point(screen.Bounds.X + MarginFromEdge, screen.Bounds.Y + MarginFromEdge);
+            Rectangle area = TargetScreen().WorkingArea;
+            Location = new Point(area.Right - Width - MarginFromEdge, area.Bottom - Height - MarginFromEdge);
         }
 
         private static Screen TargetScreen()
@@ -971,8 +1000,8 @@ namespace GHelper.Overlay
             bool isBottom = center.Y > screen.Bounds.Y + screen.Bounds.Height / 2;
             int anchor  = (isBottom ? 2 : 0) | (isRight ? 1 : 0);
             AppConfig.Set("overlay_screen", screen.Primary ? "" : screen.DeviceName);
-            int offsetX = isRight  ? screen.Bounds.Right  - Location.X - Width  : Location.X - screen.Bounds.X;
-            int offsetY = isBottom ? screen.Bounds.Bottom - Location.Y - Height : Location.Y - screen.Bounds.Y;
+            int offsetX = isRight  ? screen.WorkingArea.Right  - Location.X - Width  : Location.X - screen.WorkingArea.X;
+            int offsetY = isBottom ? screen.WorkingArea.Bottom - Location.Y - Height : Location.Y - screen.WorkingArea.Y;
             AppConfig.Set("overlay_anchor",   anchor);
             AppConfig.Set("overlay_offset_x", offsetX);
             AppConfig.Set("overlay_offset_y", offsetY);
@@ -1036,6 +1065,7 @@ namespace GHelper.Overlay
             _showUsage = BlockShown("overlay_show_usage", m);
             _showClocks = BlockShown("overlay_show_clocks", m);
             _showRam   = BlockShown("overlay_show_ram", m);
+            _showBoost = BlockShown("overlay_show_boost", m);
             _showNames = BlockShown("overlay_names", m);
             _inline    = BlockShown("overlay_inline", m);
             _lastScale = 0f;
@@ -1077,17 +1107,17 @@ namespace GHelper.Overlay
         private void RestorePosition()
         {
             int anchor = AppConfig.Get("overlay_anchor", -1);
-            if (anchor < 0) { PositionAtTopLeft(); return; }
+            if (anchor < 0) { PositionAtBottomRight(); return; }
             int offsetX = AppConfig.Get("overlay_offset_x", MarginFromEdge);
             int offsetY = AppConfig.Get("overlay_offset_y", MarginFromEdge);
             Screen screen = TargetScreen();
             bool isRight  = (anchor & 1) != 0;
             bool isBottom = (anchor & 2) != 0;
-            int x = isRight  ? screen.Bounds.Right  - Width  - offsetX : screen.Bounds.X + offsetX;
-            int y = isBottom ? screen.Bounds.Bottom - Height - offsetY : screen.Bounds.Y + offsetY;
+            int x = isRight  ? screen.WorkingArea.Right  - Width  - offsetX : screen.WorkingArea.X + offsetX;
+            int y = isBottom ? screen.WorkingArea.Bottom - Height - offsetY : screen.WorkingArea.Y + offsetY;
             const int margin = 5;
-            x = Math.Max(screen.Bounds.Left + margin, Math.Min(x, screen.Bounds.Right  - Width  - margin));
-            y = Math.Max(screen.Bounds.Top  + margin, Math.Min(y, screen.Bounds.Bottom - Height - margin));
+            x = Math.Max(screen.WorkingArea.Left + margin, Math.Min(x, screen.WorkingArea.Right  - Width  - margin));
+            y = Math.Max(screen.WorkingArea.Top  + margin, Math.Min(y, screen.WorkingArea.Bottom - Height - margin));
             Location = new Point(x, y);
         }
 

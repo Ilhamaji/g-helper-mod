@@ -146,6 +146,8 @@ namespace GHelper
 
             SetAutoModes(init: true);
 
+            BoostGuard.Init();
+
             powerSettleTimer.Elapsed += OnPowerSettled;
 
             // Subscribing for system power change events

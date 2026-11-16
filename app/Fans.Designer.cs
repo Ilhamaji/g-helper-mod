@@ -136,6 +136,7 @@ namespace GHelper
             labelPowerLimits = new Label();
             panelBoost = new Panel();
             panelBoostTitle = new Panel();
+            panelBoostGuardHost = new Panel();
             pictureBoost = new PictureBox();
             labelBoost = new Label();
             panelPowerMode = new Panel();
@@ -703,6 +704,10 @@ namespace GHelper
             panelSliders.Padding = new Padding(10, 0, 0, 0);
             panelSliders.Size = new Size(530, 1100);
             panelSliders.TabIndex = 13;
+            // The left column is taller than the window whenever the main window is short,
+            // which used to leave the lower controls unreachable. Scrolling the column keeps
+            // every section reachable at any window height.
+            panelSliders.AutoScroll = true;
             // 
             // panelAdvanced
             // 
@@ -1086,6 +1091,7 @@ namespace GHelper
             panelPower.Controls.Add(panelSlow);
             panelPower.Controls.Add(panelTotal);
             panelPower.Controls.Add(panelTitleCPU);
+            panelPower.Controls.Add(panelBoostGuardHost);
             panelPower.Controls.Add(panelBoost);
             panelPower.Controls.Add(panelBoostTitle);
             panelPower.Controls.Add(panelPowerMode);
@@ -1510,6 +1516,19 @@ namespace GHelper
             panelBoost.Name = "panelBoost";
             panelBoost.Size = new Size(520, 64);
             panelBoost.TabIndex = 3;
+            // 
+            // panelBoostGuardHost
+            // 
+            // Holds the boost guard block. Its contents are built in Fans.cs with a
+            // TableLayoutPanel so the rows size themselves instead of being positioned
+            // by hand; hand positioning is what made the labels overlap the dropdowns.
+            panelBoostGuardHost.AutoSize = true;
+            panelBoostGuardHost.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            panelBoostGuardHost.Dock = DockStyle.Top;
+            panelBoostGuardHost.Margin = new Padding(4);
+            panelBoostGuardHost.Name = "panelBoostGuardHost";
+            panelBoostGuardHost.Size = new Size(520, 60);
+            panelBoostGuardHost.TabIndex = 4;
             // 
             // panelBoostTitle
             // 
@@ -2220,6 +2239,7 @@ namespace GHelper
         private RButton buttonReset;
         private Label labelBoost;
         private RComboBox comboBoost;
+        private Panel panelBoostGuardHost;
         private PictureBox picturePerf;
         private Label labelFans;
         private Panel panelFast;

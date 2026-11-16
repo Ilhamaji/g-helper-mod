@@ -196,9 +196,12 @@ namespace GHelper.Mode
                 if (AppConfig.IsAutoStandbyNetworking()) PowerNative.SetConnectivityInStandby();
             }
 
-            // CPU Boost setting override
-            if (AppConfig.GetMode("auto_boost") != -1)
+            // CPU Boost setting override. The boost guard owns the boost mode while it is on,
+            // so a mode switch must not overwrite the value the guard is holding.
+            if (AppConfig.GetMode("auto_boost") != -1 && !BoostGuard.IsEnabled)
                     PowerNative.SetCPUBoost(AppConfig.GetMode("auto_boost"));
+            else if (BoostGuard.IsEnabled)
+                    BoostGuard.Refresh();
 
             settings.FansInit();
         }

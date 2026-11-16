@@ -49,6 +49,7 @@ namespace GHelper
             checkLabels = new GHelper.UI.RCheckBox();
             checkClocks = new GHelper.UI.RCheckBox();
             checkInline = new GHelper.UI.RCheckBox();
+            checkBoost = new GHelper.UI.RCheckBox();
             panelSliders = new Panel();
             labelSizeTitle = new Label();
             labelSize = new Label();
@@ -62,6 +63,14 @@ namespace GHelper
             buttonReset = new GHelper.UI.RButton();
             panelHotkeys = new Panel();
             labelHotkeys = new Label();
+            panelEq = new Panel();
+            labelEqPresetInner = new Label();
+            comboEqPreset = new ComboBox();
+            buttonEqBrowse = new RButton();
+            labelEqStatus = new Label();
+            labelEqStrengthTitle = new Label();
+            labelEqStrength = new Label();
+            trackEqStrength = new RTrackBar();
             panelToggles.SuspendLayout();
             tableModes.SuspendLayout();
             tableBlocks.SuspendLayout();
@@ -70,6 +79,8 @@ namespace GHelper
             ((System.ComponentModel.ISupportInitialize)trackAlpha).BeginInit();
             tableColors.SuspendLayout();
             panelHotkeys.SuspendLayout();
+            panelEq.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)trackEqStrength).BeginInit();
             SuspendLayout();
             //
             // panelToggles
@@ -225,6 +236,7 @@ namespace GHelper
             tableBlocks.Controls.Add(checkLabels, 2, 2);
             tableBlocks.Controls.Add(checkClocks, 0, 3);
             tableBlocks.Controls.Add(checkInline, 1, 3);
+            tableBlocks.Controls.Add(checkBoost, 2, 3);
             tableBlocks.Dock = DockStyle.Top;
             tableBlocks.Location = new Point(10, 160);
             tableBlocks.Name = "tableBlocks";
@@ -357,6 +369,17 @@ namespace GHelper
             checkInline.Size = new Size(130, 48);
             checkInline.TabIndex = 10;
             checkInline.Text = "Inline";
+            //
+            // checkBoost
+            //
+            checkBoost.Anchor = AnchorStyles.Left;
+            checkBoost.AutoSize = true;
+            checkBoost.Location = new Point(596, 186);
+            checkBoost.Margin = new Padding(10, 2, 4, 2);
+            checkBoost.Name = "checkBoost";
+            checkBoost.Size = new Size(130, 48);
+            checkBoost.TabIndex = 11;
+            checkBoost.Text = "CPU Boost";
             //
             // panelSliders
             //
@@ -539,13 +562,94 @@ namespace GHelper
             labelHotkeys.Size = new Size(400, 160);
             labelHotkeys.TabIndex = 0;
             //
+            // panelEq
+            //
+            panelEq.Controls.Add(labelEqStatus);
+            panelEq.Controls.Add(labelEqPresetInner);
+            panelEq.Controls.Add(comboEqPreset);
+            panelEq.Controls.Add(buttonEqBrowse);
+            panelEq.Controls.Add(labelEqStrengthTitle);
+            panelEq.Controls.Add(labelEqStrength);
+            panelEq.Controls.Add(trackEqStrength);
+            panelEq.Dock = DockStyle.Top;
+            panelEq.Name = "panelEq";
+            panelEq.Size = new Size(880, 260);
+            panelEq.TabIndex = 6;
+            //
+            // labelEqStatus
+            //
+            labelEqStatus.Location = new Point(10, 6);
+            labelEqStatus.Name = "labelEqStatus";
+            labelEqStatus.Size = new Size(860, 64);
+            labelEqStatus.TabIndex = 0;
+            //
+            // labelEqPresetInner
+            //
+            labelEqPresetInner.AutoSize = true;
+            labelEqPresetInner.Location = new Point(10, 92);
+            labelEqPresetInner.Name = "labelEqPresetInner";
+            labelEqPresetInner.TabIndex = 1;
+            //
+            // comboEqPreset
+            //
+            comboEqPreset.DropDownStyle = ComboBoxStyle.DropDownList;
+            comboEqPreset.Location = new Point(250, 88);
+            comboEqPreset.Name = "comboEqPreset";
+            comboEqPreset.Size = new Size(400, 40);
+            comboEqPreset.TabIndex = 2;
+            //
+            // buttonEqBrowse
+            //
+            buttonEqBrowse.Activated = false;
+            buttonEqBrowse.BackColor = SystemColors.ControlLight;
+            buttonEqBrowse.BorderColor = Color.Transparent;
+            buttonEqBrowse.BorderRadius = 2;
+            buttonEqBrowse.FlatAppearance.BorderSize = 0;
+            buttonEqBrowse.FlatStyle = FlatStyle.Flat;
+            buttonEqBrowse.ForeColor = SystemColors.ControlText;
+            buttonEqBrowse.Location = new Point(670, 76);
+            buttonEqBrowse.Name = "buttonEqBrowse";
+            buttonEqBrowse.Secondary = true;
+            buttonEqBrowse.Size = new Size(200, 56);
+            buttonEqBrowse.TabIndex = 3;
+            buttonEqBrowse.UseVisualStyleBackColor = false;
+            //
+            // labelEqStrengthTitle
+            //
+            labelEqStrengthTitle.AutoSize = true;
+            labelEqStrengthTitle.Location = new Point(10, 156);
+            labelEqStrengthTitle.Name = "labelEqStrengthTitle";
+            labelEqStrengthTitle.TabIndex = 4;
+            //
+            // labelEqStrength
+            //
+            labelEqStrength.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            labelEqStrength.Location = new Point(770, 156);
+            labelEqStrength.Name = "labelEqStrength";
+            labelEqStrength.Size = new Size(100, 32);
+            labelEqStrength.TabIndex = 5;
+            labelEqStrength.TextAlign = ContentAlignment.TopRight;
+            //
+            // trackEqStrength
+            //
+            trackEqStrength.LargeChange = 10;
+            trackEqStrength.Location = new Point(6, 192);
+            trackEqStrength.Maximum = 100;
+            trackEqStrength.Name = "trackEqStrength";
+            trackEqStrength.Size = new Size(864, 60);
+            trackEqStrength.SmallChange = 5;
+            trackEqStrength.TabIndex = 6;
+            trackEqStrength.TickFrequency = 10;
+            trackEqStrength.TickStyle = TickStyle.TopLeft;
+            //
             // OverlayConfig
             //
             AutoScaleDimensions = new SizeF(192F, 192F);
             AutoScaleMode = AutoScaleMode.Dpi;
-            ClientSize = new Size(900, 723);
+            ClientSize = new Size(900, 983);
             Controls.Add(panelToggles);
             Controls.Add(panelHotkeys);
+            Controls.Add(panelEq);
             Controls.Add(tableColors);
             Controls.Add(panelSliders);
             Controls.Add(tableBlocks);
@@ -570,6 +674,9 @@ namespace GHelper
             tableColors.ResumeLayout(false);
             panelHotkeys.ResumeLayout(false);
             panelHotkeys.PerformLayout();
+            panelEq.ResumeLayout(false);
+            panelEq.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)trackEqStrength).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -596,6 +703,7 @@ namespace GHelper
         private UI.RCheckBox checkLabels;
         private UI.RCheckBox checkInline;
         private UI.RCheckBox checkClocks;
+        private UI.RCheckBox checkBoost;
         private Panel panelSliders;
         private Label labelSizeTitle;
         private Label labelSize;
@@ -609,5 +717,13 @@ namespace GHelper
         private UI.RButton buttonReset;
         private Panel panelHotkeys;
         private Label labelHotkeys;
+        private Panel panelEq;
+        private Label labelEqPresetInner;
+        private ComboBox comboEqPreset;
+        private UI.RButton buttonEqBrowse;
+        private Label labelEqStatus;
+        private Label labelEqStrengthTitle;
+        private Label labelEqStrength;
+        private RTrackBar trackEqStrength;
     }
 }

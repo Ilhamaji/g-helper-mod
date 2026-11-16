@@ -944,6 +944,22 @@ namespace GHelper
             menuOverlayGameOnly.Enabled = AppConfig.IsOverlay();
             contextMenuStrip.Items.Add(menuOverlayGameOnly);
 
+            if (EqualizerApo.Installed)
+            {
+                var menuMic = new ToolStripMenuItem("Mic effects");
+                menuMic.Margin = padding;
+                menuMic.Checked = EqualizerApo.Enabled;
+                menuMic.Click += (sender, args) =>
+                {
+                    menuMic.Checked = !menuMic.Checked;
+                    EqualizerApo.Enabled = menuMic.Checked;
+                    try { EqualizerApo.Apply(); }
+                    catch (Exception ex) { Logger.WriteLine("Mic effects toggle failed: " + ex); }
+                };
+                contextMenuStrip.Items.Add(menuMic);
+                contextMenuStrip.Items.Add("-");
+            }
+
             var quit = new ToolStripMenuItem(Properties.Strings.Quit);
             quit.Click += ButtonQuit_Click;
             quit.Margin = padding;

@@ -606,7 +606,7 @@ Do you still want to continue?</value>
     <value>Date Format</value>
   </data>
   <data name="MatrixFlip" xml:space="preserve">
-    <value>Rotate 180°</value>
+    <value>Rotate 180â”¬â–‘</value>
   </data>
   <data name="MaxRefreshTooltip" xml:space="preserve">
     <value>Max refresh rate for lower latency</value>
@@ -1126,5 +1126,55 @@ from heating up the sleeping laptop and draining the battery.</value>
   </data>
   <data name="Background" xml:space="preserve">
     <value>Back</value>
+  </data>
+
+  <data name="Ram" xml:space="preserve">
+    <value>RAM</value>
+  </data>
+  <data name="Cpu" xml:space="preserve">
+    <value>CPU</value>
+  </data>
+  <data name="Gpu" xml:space="preserve">
+    <value>GPU</value>
+  </data>
+
+  <data name="BoostGuard" xml:space="preserve">
+    <value>Boost Guard</value>
+  </data>
+  <data name="BoostGuardToggle" xml:space="preserve">
+    <value>Enable Boost Guard</value>
+  </data>
+  <data name="BoostGuardHint" xml:space="preserve">
+    <value>Switches CPU boost only for the games you add to your list. Nothing is detected automatically</value>
+  </data>
+  <data name="BoostGuardIdle" xml:space="preserve">
+    <value>Boost when idle</value>
+  </data>
+  <data name="BoostGuardGame" xml:space="preserve">
+    <value>Boost in game</value>
+  </data>
+  <data name="BoostGuardGames" xml:space="preserve">
+    <value>Games list</value>
+  </data>
+  <data name="BoostGuardGamesHint" xml:space="preserve">
+    <value>Only the games you add here are treated as games. Each row can keep its own CPU boost, or Default for the boost above.</value>
+  </data>
+  <data name="BoostGuardAddGame" xml:space="preserve">
+    <value>Add running app</value>
+  </data>
+  <data name="BoostGuardRemoveGame" xml:space="preserve">
+    <value>Remove selected</value>
+  </data>
+  <data name="BoostGuardPickApp" xml:space="preserve">
+    <value>Pick a running app...</value>
+  </data>
+  <data name="BoostGuardStatusOff" xml:space="preserve">
+    <value>Boost Guard is off</value>
+  </data>
+  <data name="BoostGuardStatusGame" xml:space="preserve">
+    <value>Game mode: {0}</value>
+  </data>
+  <data name="BoostGuardStatusIdle" xml:space="preserve">
+    <value>Idle mode: {0}</value>
   </data>
 </root>

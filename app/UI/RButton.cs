@@ -1,4 +1,4 @@
-﻿using System.Drawing.Drawing2D;
+using System.Drawing.Drawing2D;
 
 namespace GHelper.UI
 {
@@ -69,16 +69,22 @@ namespace GHelper.UI
             FlatStyle = FlatStyle.Flat;
             FlatAppearance.BorderSize = 0;
             BackColorChanged += (s, e) => UpdateHoverColor();
+            // ShowFocusCues is off to keep the flat look, so the button has to repaint itself
+            // when focus moves or a keyboard user cannot see which button is selected.
+            GotFocus += (_, _) => Invalidate();
+            LostFocus += (_, _) => Invalidate();
             UpdateHoverColor();
         }
 
         private void UpdateHoverColor()
         {
-            int lum = (BackColor.R * 30 + BackColor.G * 59 + BackColor.B * 11) / 100;
+            int lum = Luminance(BackColor);
             Color target = lum > 128 ? Color.Black : Color.White;
             FlatAppearance.MouseOverBackColor = Shift(BackColor, target, HoverShiftAmount);
             FlatAppearance.MouseDownBackColor = Shift(BackColor, target, HoverShiftAmount * 2f);
         }
+
+        private static int Luminance(Color color) => (color.R * 30 + color.G * 59 + color.B * 11) / 100;
 
         private static Color Shift(Color from, Color target, float amount)
         {
@@ -167,9 +173,10 @@ namespace GHelper.UI
                 }
                 else
                 {
-                    using (var brush = new SolidBrush(Parent.BackColor))
-                        pevent.Graphics.FillRectangle(brush, rect);
-                    using (var brush = new SolidBrush(BackColor))
+                    // An unset (transparent) BackColor would leave the caption base.OnPaint
+                    // already drew in place, so the disabled text came out doubled.
+                    Color fill = BackColor.A == 0 ? Parent.BackColor : Color.FromArgb(255, BackColor);
+                    using (var brush = new SolidBrush(fill))
                         pevent.Graphics.FillRectangle(brush, rect);
                 }
                 TextFormatFlags flags = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak;
@@ -182,6 +189,15 @@ namespace GHelper.UI
                 ControlHelper.DrawGradientBorder(pevent.Graphics, borderRect, borderColor, radius, border, PenAlignment.Outset, RForm.flatTheme ? 0f : ActiveTopLighten);
             }
 
+            // A tabbed-to button has to look different from a resting one. The framework cue
+            // is suppressed for the flat appearance, so draw it here instead.
+            if (Focused && Enabled)
+            {
+                int inset = Math.Max(4, border + 2);
+                Rectangle focusRect = Rectangle.Inflate(rectSurface, -inset, -inset);
+                Color cue = Luminance(BackColor) > 128 ? Color.Black : Color.White;
+                ControlPaint.DrawFocusRectangle(pevent.Graphics, focusRect, cue, BackColor);
+            }
 
         }
 

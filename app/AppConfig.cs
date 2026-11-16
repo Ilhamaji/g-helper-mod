@@ -202,6 +202,13 @@ public static class AppConfig
             ? result : empty;
     }
 
+    public static bool GetBool(string name, bool defaultValue = false)
+    {
+        lock (configLock)
+            return config.TryGetValue(name, out var val) && bool.TryParse(val?.ToString(), out bool result)
+            ? result : defaultValue;
+    }
+
     public static bool Is(string name)
     {
         return Get(name) == 1;

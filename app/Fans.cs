@@ -1,4 +1,4 @@
-﻿using GHelper.Fan;
+using GHelper.Fan;
 using GHelper.Gpu.NVidia;
 using GHelper.Helpers;
 using GHelper.Mode;
@@ -81,6 +81,10 @@ namespace GHelper
             labelHysteresisDown.Text = Properties.Strings.HysteresisDown;
             buttonReadLimits.Text = Properties.Strings.ReadLimits;
             buttonDownload.Text = Properties.Strings.InstallPawnIODriver;
+
+            // Built before InitTheme so the theme pass reaches these controls too; controls
+            // created afterwards keep the default light colours.
+            BuildBoostGuardPanel();
 
             InitTheme(true);
 
@@ -309,6 +313,9 @@ namespace GHelper
             FormClosed += Fans_FormClosed;
             Activated  += (_, _) => VisualiseAdvanced();
 
+            BoostGuard.Applied += BoostGuardApplied;
+            BoostGuard.StateChanged += BoostGuardStateChanged;
+
             trackUV.AccessibleName = labelLeftUV.Text;
             trackUViGPU.AccessibleName = labelLeftUViGPU.Text;
             trackTemp.AccessibleName = labelLeftTemp.Text;
@@ -364,6 +371,9 @@ namespace GHelper
 
         private void Fans_FormClosed(object? sender, FormClosedEventArgs e)
         {
+            BoostGuard.Applied -= BoostGuardApplied;
+            BoostGuard.StateChanged -= BoostGuardStateChanged;
+
             //Because windows charts seem to eat a lot of memory :(
             GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced);
         }
@@ -930,6 +940,7 @@ namespace GHelper
         private void Fans_Shown(object? sender, EventArgs e)
         {
             FormPosition();
+            LogBoostGuardLayout();
         }
 
 
@@ -955,6 +966,8 @@ namespace GHelper
             int boost = PowerNative.GetCPUBoost();
             if (boost >= 0)
                 comboBoost.SelectedIndex = Math.Min(boost, comboBoost.Items.Count - 1);
+
+            InitBoostGuard();
 
             string powerMode = PowerNative.GetPowerMode();
             bool batterySaver = PowerNative.GetBatterySaverStatus();
@@ -983,11 +996,318 @@ namespace GHelper
         {
             if (AppConfig.GetMode("auto_boost") != comboBoost.SelectedIndex)
             {
-                PowerNative.SetCPUBoost(comboBoost.SelectedIndex);
+                // While the guard is on it owns the boost mode, so only remember the choice
+                // here instead of fighting the guard for the setting.
+                if (!BoostGuard.IsEnabled)
+                    PowerNative.SetCPUBoost(comboBoost.SelectedIndex);
             }
             AppConfig.SetMode("auto_boost", comboBoost.SelectedIndex);
         }
 
+        // ---------------------------------------------------------------------------------
+        // Boost guard panel
+        //
+        // Built in code rather than in the designer on purpose: the block is a stack of
+        // rows whose heights depend on the text length and the UI language, and hand-placed
+        // controls overlapped as soon as the strings changed. A TableLayoutPanel with
+        // AutoSize rows lets every row claim the height it needs.
+        // ---------------------------------------------------------------------------------
+
+        private RCheckBox checkBoostGuard = default!;
+        private RComboBox comboBoostGuardIdle = default!;
+        private RComboBox comboBoostGuardGame = default!;
+        private RButton buttonBoostGuardGames = default!;
+        private Label labelBoostGuardStatus = default!;
+        private bool boostGuardBuilding;
+
+
+
+        private static readonly string[] BoostModes =
+            { "Disabled", "Enabled", "Aggressive", "Efficient Enabled", "Efficient Aggressive", "Aggressive at Guaranteed", "Efficient at Guaranteed" };
+
+        private void BuildBoostGuardPanel()
+        {
+            boostGuardBuilding = true;
+
+            // The designer authored this form in 192 DPI units, so WinForms scales every
+            // hand-placed control by DeviceDpi / 192. Controls created here in code are not
+            // touched by that pass, so they have to apply the same factor or they come out
+            // twice the size of their neighbours.
+            float scale = DeviceDpi / 192f;
+
+            int Px(int value) => (int)Math.Round(value * scale);
+            Font Font(float size, FontStyle style = FontStyle.Regular) => new Font("Segoe UI", size, style);
+
+            var table = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 1,
+                RowCount = 0,
+                Margin = new Padding(0),
+                Padding = new Padding(0),
+                Name = "tableBoostGuard"
+            };
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+
+            Label Title(string text)
+            {
+                var label = new Label
+                {
+                    Text = text,
+                    AutoSize = true,
+                    Margin = new Padding(0, Px(2), 0, Px(4)),
+                    Font = Font(9F, FontStyle.Bold)
+                };
+                return label;
+            }
+
+            Label Hint(string text)
+            {
+                var label = new Label
+                {
+                    Text = text,
+                    AutoSize = true,
+                    // The column is narrow when the main window is short, so the wrap width
+                    // follows the panel instead of a fixed number that would clip the text.
+                    MaximumSize = new Size(Math.Max(Px(200), panelBoostGuardHost.Width - Px(24)), 0),
+                    Margin = new Padding(0, 0, 0, Px(8))
+                };
+                return label;
+            }
+
+            RCheckBox Check(string text)
+            {
+                var check = new RCheckBox
+                {
+                    Text = text,
+                    AutoSize = true,
+                    BackColor = SystemColors.ControlLight,
+                    Padding = new Padding(Px(12), Px(6), Px(12), Px(6)),
+                    Margin = new Padding(0, 0, 0, Px(4)),
+                    UseVisualStyleBackColor = false,
+                    // A CheckBox does not wrap, so a narrow column would clip its label.
+                    MaximumSize = new Size(Math.Max(Px(200), panelBoostGuardHost.Width - Px(24)), 0)
+                };
+                return check;
+            }
+
+            RComboBox Combo()
+            {
+                var combo = new RComboBox
+                {
+                    DropDownStyle = ComboBoxStyle.DropDownList,
+                    Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                    Margin = new Padding(0, 0, 0, Px(10))
+                };
+                combo.Items.AddRange(BoostModes);
+                return combo;
+            }
+
+            void Add(Control control)
+            {
+                table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                table.Controls.Add(control, 0, table.RowCount);
+                table.RowCount++;
+            }
+
+            Add(Title(Properties.Strings.BoostGuard));
+
+            checkBoostGuard = Check(Properties.Strings.BoostGuardToggle);
+            Add(checkBoostGuard);
+            Add(Hint(Properties.Strings.BoostGuardHint));
+
+            // The live state sits at the top, under the switch it describes. At the bottom of
+            // the column it needed scrolling to see, which defeats the point of a status line.
+            labelBoostGuardStatus = new Label
+            {
+                Text = "",
+                AutoSize = true,
+                MaximumSize = new Size(Math.Max(Px(200), panelBoostGuardHost.Width - Px(24)), 0),
+                Margin = new Padding(0, Px(4), 0, Px(6))
+            };
+            Add(labelBoostGuardStatus);
+
+            Add(Title(Properties.Strings.BoostGuardIdle));
+            comboBoostGuardIdle = Combo();
+            comboBoostGuardIdle.AccessibleName = Properties.Strings.BoostGuardIdle;
+            Add(comboBoostGuardIdle);
+
+            Add(Title(Properties.Strings.BoostGuardGame));
+            comboBoostGuardGame = Combo();
+            comboBoostGuardGame.AccessibleName = Properties.Strings.BoostGuardGame;
+            Add(comboBoostGuardGame);
+
+            // The only source of detection: nothing is ever added automatically.
+            Add(Title(Properties.Strings.BoostGuardGames));
+
+            // The table lives in its own window: the side panel is too narrow for two
+            // columns, and a grid squashed in here was unreadable.
+            buttonBoostGuardGames = new RButton
+            {
+                Text = Properties.Strings.BoostGuardGames,
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, Px(8))
+            };
+            buttonBoostGuardGames.Click += (_, _) => OpenGameList();
+            Add(buttonBoostGuardGames);
+            panelBoostGuardHost.Controls.Clear();
+            panelBoostGuardHost.Controls.Add(table);
+
+            checkBoostGuard.Click += (_, _) => ToggleBoostGuard();
+            comboBoostGuardIdle.SelectedIndexChanged += (_, _) => SaveBoostGuardMode("boost_guard_idle", comboBoostGuardIdle);
+            comboBoostGuardGame.SelectedIndexChanged += (_, _) => SaveBoostGuardMode("boost_guard_game", comboBoostGuardGame);
+
+            boostGuardBuilding = false;
+        }
+
+        // Off by default. Prints the measured bounds of every Boost guard control, which is
+        // how a clipped row or a control with no height gets found without guessing from a
+        // screenshot.
+        private void LogBoostGuardLayout()
+        {
+            if (AppConfig.Get("boost_guard_debug") != 1) return;
+
+            void Walk(Control parent, string indent)
+            {
+                foreach (Control control in parent.Controls)
+                {
+                    Logger.WriteLine($"Boost guard layout: {indent}{control.GetType().Name} '{control.Name}' " +
+                        $"bounds={control.Left},{control.Top} {control.Width}x{control.Height} " +
+                        $"visible={control.Visible} text='{(control.Text.Length > 30 ? control.Text[..30] : control.Text)}'");
+                    Walk(control, indent + "  ");
+                }
+            }
+
+            Logger.WriteLine($"Boost guard layout: host={panelBoostGuardHost.Width}x{panelBoostGuardHost.Height}");
+            Walk(panelBoostGuardHost, "");
+        }
+
+        private void ToggleBoostGuard()
+        {
+            if (boostGuardBuilding) return;
+
+            AppConfig.Set("boost_guard", checkBoostGuard.Checked ? 1 : 0);
+
+            if (checkBoostGuard.Checked)
+            {
+                // Seed both sides from the current setting so enabling the guard never moves
+                // the boost mode somewhere the user did not ask for.
+                int current = comboBoost.SelectedIndex;
+                if (AppConfig.Get("boost_guard_idle") < 0) AppConfig.Set("boost_guard_idle", 0);
+                if (AppConfig.Get("boost_guard_game") < 0) AppConfig.Set("boost_guard_game", Math.Max(current, 1));
+
+                BoostGuard.Init();
+            }
+            else
+            {
+                BoostGuard.Stop();
+            }
+
+            InitBoostGuard();
+        }
+
+        private void SaveBoostGuardMode(string key, RComboBox combo)
+        {
+            if (boostGuardBuilding) return;
+            if (!BoostGuard.IsEnabled) return;
+            if (AppConfig.Get(key) == combo.SelectedIndex) return;
+
+            AppConfig.Set(key, combo.SelectedIndex);
+            BoostGuard.Refresh();
+            UpdateBoostGuardStatus();
+        }
+
+        private void InitBoostGuard()
+        {
+            if (checkBoostGuard is null) return;
+            boostGuardBuilding = true;
+            checkBoostGuard.Checked = BoostGuard.IsEnabled;
+            comboBoostGuardIdle.SelectedIndex = Math.Clamp(BoostGuard.IdleBoost, 0, comboBoostGuardIdle.Items.Count - 1);
+            comboBoostGuardGame.SelectedIndex = Math.Clamp(BoostGuard.GameBoost, 0, comboBoostGuardGame.Items.Count - 1);
+            boostGuardBuilding = false;
+
+            bool enabled = BoostGuard.IsEnabled;
+            comboBoostGuardIdle.Enabled = enabled;
+            comboBoostGuardGame.Enabled = enabled;
+            buttonBoostGuardGames.Enabled = enabled;
+            // The plain boost picker is a different control for the same setting, so it is
+            // locked while the guard owns that setting.
+            comboBoost.Enabled = !enabled;
+            UpdateBoostGuardStatus();
+        }
+
+        private void OpenGameList()
+        {
+            if (!BoostGuard.IsEnabled) return;
+            using var form = new GameListForm();
+            form.ShowDialog(this);
+            UpdateBoostGuardStatus();
+        }
+        private static string BoostName(int boost) =>
+            boost >= 0 && boost < BoostModes.Length ? BoostModes[boost] : "?";
+
+        private void UpdateBoostGuardStatus()
+        {
+            if (labelBoostGuardStatus is null) return;
+
+            // Gray reads as disabled, which is why the idle line was so faint. The idle state
+            // is a normal working state, so it uses the ordinary foreground colour; only the
+            // guard being off is muted.
+            if (!BoostGuard.IsEnabled)
+            {
+                labelBoostGuardStatus.Text = Properties.Strings.BoostGuardStatusOff;
+                labelBoostGuardStatus.ForeColor = colorGray;
+                return;
+            }
+
+            bool game = BoostGuard.IsGameActive;
+            int boost = BoostGuard.AppliedBoost;
+
+            string template = game ? Properties.Strings.BoostGuardStatusGame : Properties.Strings.BoostGuardStatusIdle;
+            string text = string.Format(template, BoostName(boost));
+
+            // Naming the process is what tells the user whether detection actually worked.
+            string active = BoostGuard.ActiveGame;
+            if (game && active.Length > 0) text = text + " (" + active + ")";
+
+            labelBoostGuardStatus.Text = text;
+            // The red mode colour does not reach AA contrast on the light theme (3.36:1),
+            // so the status keeps the body foreground colour in both themes. The wording
+            // already says whether a game is running.
+            labelBoostGuardStatus.ForeColor = RForm.foreMain;
+        }
+
+        private void BoostGuardApplied()
+        {
+            if (IsDisposed) return;
+
+            if (InvokeRequired)
+            {
+                // The guard fires from its own timer thread; the form can be closing at the
+                // same moment, and BeginInvoke on a gone handle would throw there.
+                if (!IsHandleCreated) return;
+                try { BeginInvoke(UpdateBoostGuardStatus); } catch (InvalidOperationException) { }
+                return;
+            }
+
+            UpdateBoostGuardStatus();
+        }
+
+        // The table window is modal, so it never needs a live refresh; only the panel's
+        // status line does.
+        private void BoostGuardStateChanged()
+        {
+            if (IsDisposed) return;
+            if (InvokeRequired)
+            {
+                if (!IsHandleCreated) return;
+                try { BeginInvoke(UpdateBoostGuardStatus); } catch (InvalidOperationException) { }
+                return;
+            }
+            UpdateBoostGuardStatus();
+        }
         private void CheckApplyPower_Click(object? sender, EventArgs e)
         {
             if (sender is null) return;
