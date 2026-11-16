@@ -1,12 +1,11 @@
-﻿using GHelper.Helpers;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace GHelper.AutoUpdate
 {
+    // Custom build: never installs the upstream zip over this exe, it only points at the release notes.
     public class AutoUpdateControl
     {
 
@@ -41,13 +40,11 @@ namespace GHelper.AutoUpdate
         {
             if (update)
             {
-                Task.Run(() =>
-                {
-                    CheckForUpdatesAsync(true);
-                });
-            } else
-            {
                 LoadReleases();
+            }
+            else
+            {
+                Task.Run(() => CheckForUpdatesAsync());
             }
         }
 
@@ -63,7 +60,7 @@ namespace GHelper.AutoUpdate
             }
         }
 
-        async void CheckForUpdatesAsync(bool force = false)
+        async void CheckForUpdatesAsync()
         {
 
             if (AppConfig.Is("skip_updates")) return;
@@ -77,41 +74,21 @@ namespace GHelper.AutoUpdate
                     var json = await httpClient.GetStringAsync("https://api.github.com/repos/seerge/g-helper/releases/latest");
                     var config = JsonSerializer.Deserialize<JsonElement>(json);
                     var tag = config.GetProperty("tag_name").ToString().Replace("v", "");
-                    var assets = config.GetProperty("assets");
-
-                    string url = null;
-
-                    for (int i = 0; i < assets.GetArrayLength(); i++)
-                    {
-                        if (assets[i].GetProperty("browser_download_url").ToString().Contains(".zip"))
-                            url = assets[i].GetProperty("browser_download_url").ToString();
-                    }
-
-                    if (url is null)
-                        url = assets[0].GetProperty("browser_download_url").ToString();
 
                     var gitVersion = new Version(tag);
                     var appVersion = new Version(Assembly.GetExecutingAssembly().GetName().Version.ToString());
-                    //appVersion = new Version("0.50.0.0"); 
 
                     if (gitVersion.CompareTo(appVersion) > 0)
                     {
-                        versionUrl = url;
                         update = true;
-                        settings.SetVersionLabel(Properties.Strings.DownloadUpdate + $": {appVersion.Major}.{appVersion.Minor}.{appVersion.Build} → {tag}", true);
-
-                        string[] args = Environment.GetCommandLineArgs();
-                        if (force || args.Length > 1 && args[1] == "autoupdate")
-                        {
-                            AutoUpdate(url);
-                            return;
-                        }
+                        settings.SetVersionLabel($"Update available: {appVersion.Major}.{appVersion.Minor}.{appVersion.Build} → {tag}", true);
 
                         if (AppConfig.GetString("skip_version") != tag)
                         {
-                            DialogResult dialogResult = settings.ShowMessage(Properties.Strings.DownloadUpdate + ": G-Helper " + tag + "?", "Update", MessageBoxButtons.YesNo);
+                            string text = $"G-Helper {tag} is available.\n\nThis is a custom build, it is not updated automatically.\nOpen the releases page?";
+                            DialogResult dialogResult = settings.ShowMessage(text, "Update", MessageBoxButtons.YesNo);
                             if (dialogResult == DialogResult.Yes)
-                                AutoUpdate(url);
+                                LoadReleases();
                             else
                                 AppConfig.Set("skip_version", tag);
                         }
@@ -127,76 +104,6 @@ namespace GHelper.AutoUpdate
             catch (Exception ex)
             {
                 Logger.WriteLine("Failed to check for updates:" + ex.Message);
-            }
-
-        }
-
-        public static string EscapeString(string input)
-        {
-            return Regex.Replace(Regex.Replace(input, @"\[|\]", "`$0"), @"\'", "''");
-        }
-
-        async void AutoUpdate(string requestUri)
-        {
-
-            Uri uri = new Uri(requestUri);
-            string zipName = Path.GetFileName(uri.LocalPath);
-
-            string exeLocation = Application.ExecutablePath;
-            string exeDir = Path.GetDirectoryName(exeLocation);
-            //exeDir = "C:\\Program Files\\GHelper";
-            string exeName = Path.GetFileName(exeLocation);
-            string zipLocation = exeDir + "\\" + zipName;
-
-            using (HttpClient client = new HttpClient())
-            {
-
-                client.DefaultRequestHeaders.Add("User-Agent", "G-Helper App");
-                Logger.WriteLine(requestUri);
-                Logger.WriteLine(exeDir);
-                Logger.WriteLine(zipName);
-                Logger.WriteLine(exeName);
-
-                try
-                {
-                    var bytes = await client.GetByteArrayAsync(uri);
-                    File.WriteAllBytes(zipLocation, bytes);
-                    Logger.WriteLine($"Downloaded {bytes.Length}b: {zipLocation} (exists={File.Exists(zipLocation)}, size={new FileInfo(zipLocation).Length})");
-                }
-                catch (Exception ex)
-                {
-                    Logger.WriteLine(ex.Message);
-                    if (!ProcessHelper.IsUserAdministrator())
-                    {
-                        ProcessHelper.RunAsAdmin("autoupdate");
-                        Application.Exit();
-                    } else
-                    {
-                        LoadReleases();
-                    }
-                    return;
-                }
-
-                string command = $"$ErrorActionPreference = \"Stop\"; Set-Location -Path '{EscapeString(exeDir)}'; Wait-Process -Name \"GHelper\"; Expand-Archive \"{zipName}\" -DestinationPath . -Force; Remove-Item \"{zipName}\" -Force; \".\\{exeName}\"; ";
-                Logger.WriteLine(command);
-
-                try
-                {
-                    var cmd = new Process();
-                    cmd.StartInfo.WorkingDirectory = exeDir;
-                    cmd.StartInfo.UseShellExecute = false;
-                    cmd.StartInfo.CreateNoWindow = true;
-                    cmd.StartInfo.FileName = "powershell";
-                    cmd.StartInfo.Arguments = command;
-                    if (ProcessHelper.IsUserAdministrator()) cmd.StartInfo.Verb = "runas";
-                    cmd.Start();
-                }
-                catch (Exception ex)
-                {
-                    Logger.WriteLine(ex.Message);
-                }
-
-                Application.Exit();
             }
 
         }
