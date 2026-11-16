@@ -217,17 +217,25 @@ namespace GHelper.Mode
 
         // True only while one of the user's listed games is running. There is no fallback to
         // the foreground window, fullscreen windows, or CPU load on purpose.
+        //
+        // Several listed games can run at once. The highest boost wins, because a game pinned
+        // to a lower mode must not hold back a heavier one, and taking the first match would
+        // make the result depend on the alphabetical order of the list.
         private static bool IsGameRunning()
         {
+            activeGame = "";
+            int best = -1;
+
             foreach (var name in GameList)
             {
                 if (!IsProcessRunning(name)) continue;
+                int mode = GameMode(name) is int own && own >= 0 ? own : GameBoost;
+                if (mode <= best) continue;
+                best = mode;
                 activeGame = name;
-                return true;
             }
 
-            activeGame = "";
-            return false;
+            return activeGame.Length > 0;
         }
 
         private static void Tick(object? sender, System.Timers.ElapsedEventArgs e)

@@ -70,6 +70,11 @@ namespace GHelper.Mode
                 }
             }
 
+            // Already on the game side and the wanted value changed: another listed game with
+            // a different override took over, so apply it now instead of waiting for a
+            // game-to-idle transition that may never come.
+            if (isGame && gameBoost != AppliedBoost) return Commit(gameBoost);
+
             return null;
         }
 

@@ -33,6 +33,8 @@ adding, so the guard cannot raise boost for something the user did not pick.
 - Exit: no listed process for `boost_guard_idle_delay` (default 2 s) → apply `boost_guard_idle` (default `0` =
   Disabled).
 - Per-game override: `boost_guard_game_modes` holds `name:mode` pairs, so one game can run at a lower boost.
+- Two listed games running at once: the **highest** boost wins, and it is applied on the next tick, so a game pinned
+  to `0` cannot hold back a heavier one. The rule does not depend on list order.
 - A performance-mode switch no longer overwrites the boost the guard holds; it asks the guard to re-apply instead.
 - The list is edited in the Fans tab, with a running-app picker that only offers names the user confirms.
 
